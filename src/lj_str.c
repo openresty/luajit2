@@ -18,6 +18,15 @@
 int32_t LJ_FASTCALL lj_str_cmp(GCstr *a, GCstr *b)
 {
   MSize i, n = a->len > b->len ? b->len : a->len;
+#ifdef LUAJIT_USE_VALGRIND
+  for (i = 0; i < n; i++) {
+    uint8_t va = *(const uint8_t *)(strdata(a)+i);
+    uint8_t vb = *(const uint8_t *)(strdata(b)+i);
+    if (va != vb) {
+        return va < vb ? -1 : 1;
+    }
+  }
+#else
   for (i = 0; i < n; i += 4) {
     /* Note: innocuous access up to end of string + 3. */
     uint32_t va = *(const uint32_t *)(strdata(a)+i);
@@ -34,6 +43,7 @@ int32_t LJ_FASTCALL lj_str_cmp(GCstr *a, GCstr *b)
       return va < vb ? -1 : 1;
     }
   }
+#endif
   return (int32_t)(a->len - b->len);
 }
 
@@ -149,6 +159,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   h ^= b; h -= lj_rol(b, 16);
   /* Check if the string has already been interned. */
   o = gcref(g->strhash[h & g->strmask]);
+#ifndef LUAJIT_USE_VALGRIND
   if (LJ_LIKELY((((uintptr_t)str+len-1) & (LJ_PAGESIZE-1)) <= LJ_PAGESIZE-4)) {
     while (o != NULL) {
       GCstr *sx = gco2str(o);
@@ -160,6 +171,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
       o = gcnext(o);
     }
   } else {  /* Slow path: end of string is too close to a page boundary. */
+#endif
     while (o != NULL) {
       GCstr *sx = gco2str(o);
       if (sx->len == len && memcmp(str, strdata(sx), len) == 0) {
@@ -169,7 +181,9 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
       }
       o = gcnext(o);
     }
+#ifndef LUAJIT_USE_VALGRIND
   }
+#endif
   /* Nope, create a new string. */
   s = lj_mem_newt(L, sizeof(GCstr)+len+1, GCstr);
   newwhite(g, s);
