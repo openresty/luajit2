@@ -300,7 +300,9 @@ const char *lj_debug_funcname(lua_State *L, cTValue *frame, const char **name)
   if (pc != NO_BCPOS) {
     GCproto *pt = funcproto(fn);
     const BCIns *ip = &proto_bc(pt)[check_exp(pc < pt->sizebc, pc)];
-    MMS mm = bcmode_mm(bc_op(*ip));
+    MMS mm;
+    if (pc >= pt->sizebc) return NULL;
+    mm = bcmode_mm(bc_op(*ip));
     if (mm == MM_call) {
       BCReg slot = bc_a(*ip);
       if (bc_op(*ip) == BC_ITERC) slot -= 3;
