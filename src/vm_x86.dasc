@@ -1,6 +1,6 @@
 |// Low-level VM code for x86 CPUs.
 |// Bytecode interpreter, fast functions and helper functions.
-|// Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+|// Copyright (C) 2005-2014 Mike Pall. See Copyright Notice in luajit.h
 |
 |.if P64
 |.arch x64
@@ -2697,6 +2697,8 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov RB, TMP1			// Get previous trace number.
   |  mov RA, [DISPATCH+DISPATCH_J(trace)]
   |  mov TRACE:RD, [RA+RB*4]
+  |  test TRACE:RD, TRACE:RD
+  |  jz ->cont_nop
   |  movzx RD, word TRACE:RD->link
   |  cmp RD, RB
   |  je ->cont_nop			// Blacklisted.
@@ -2844,7 +2846,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov r13, TMPa
   |  mov r12, TMPQ
   |.endif
-  |  test RD, RD; js >3			// Check for error from exit.
+  |  test RD, RD; js >9			// Check for error from exit.
   |  mov L:RB, SAVE_L
   |  mov MULTRES, RD
   |  mov LFUNC:KBASE, [BASE-8]
@@ -2860,16 +2862,31 @@ static void build_subroutines(BuildCtx *ctx)
   |  add PC, 4
   |  shr RC, 16
   |  cmp OP, BC_FUNCF			// Function header?
-  |  jb >2
-  |  mov RC, MULTRES			// RC/RD holds nres+1.
+  |  jb >3
+  |  cmp OP, BC_FUNCC+2			// Fast function?
+  |  jae >4
   |2:
+  |  mov RC, MULTRES			// RC/RD holds nres+1.
+  |3:
   |.if X64
   |  jmp aword [DISPATCH+OP*8]
   |.else
   |  jmp aword [DISPATCH+OP*4]
   |.endif
   |
-  |3:  // Rethrow error from the right C frame.
+  |4:  // Check frame below fast function.
+  |  mov RC, [BASE-4]
+  |  test RC, FRAME_TYPE
+  |  jnz <2				// Trace stitching continuation?
+  |  // Otherwise set KBASE for Lua function below fast function.
+  |  movzx RC, byte [RC-3]
+  |  not RCa
+  |  mov LFUNC:KBASE, [BASE+RC*8-8]
+  |  mov KBASE, LFUNC:KBASE->pc
+  |  mov KBASE, [KBASE+PC2PROTO(k)]
+  |  jmp <2
+  |
+  |9:  // Rethrow error from the right C frame.
   |  neg RD
   |  mov FCARG1, L:RB
   |  mov FCARG2, RD
@@ -5933,12 +5950,12 @@ static void emit_asm_debug(BuildCtx *ctx)
 #if LJ_64
 	  "\t.byte 0xe\n\t.byte 16\n"		/* def_cfa_offset */
 	  "\t.byte 0x86\n\t.byte 0x2\n"		/* offset rbp */
-	  "\t.byte 0xd\n\t.uleb128 0x6\n"	/* def_cfa_register rbp */
+	  "\t.byte 0xd\n\t.byte 0x6\n"		/* def_cfa_register rbp */
 	  "\t.byte 0x83\n\t.byte 0x3\n"		/* offset rbx */
 #else
 	  "\t.byte 0xe\n\t.byte 8\n"		/* def_cfa_offset */
 	  "\t.byte 0x84\n\t.byte 0x2\n"		/* offset ebp (4 for MACH-O)*/
-	  "\t.byte 0xd\n\t.uleb128 0x4\n"	/* def_cfa_register ebp */
+	  "\t.byte 0xd\n\t.byte 0x4\n"		/* def_cfa_register ebp */
 	  "\t.byte 0x83\n\t.byte 0x3\n"		/* offset ebx */
 #endif
 	  "\t.align " BSZPTR "\n"
