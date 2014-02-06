@@ -7,7 +7,7 @@
 # Also works with MinGW and Cygwin on Windows.
 # Please check msvcbuild.bat for building with MSVC on Windows.
 #
-# Copyright (C) 2005-2012 Mike Pall. See Copyright Notice in luajit.h
+# Copyright (C) 2005-2014 Mike Pall. See Copyright Notice in luajit.h
 ##############################################################################
 
 MAJVER=  2
@@ -294,7 +294,9 @@ ifeq (Darwin,$(TARGET_SYS))
   endif
   TARGET_STRIP+= -x
   TARGET_AR+= 2>/dev/null
-  TARGET_XCFLAGS+= -fno-stack-protector
+  ifeq (,$(shell $(TARGET_CC) -o /dev/null -c -x c /dev/null -fno-stack-protector 2>/dev/null || echo 1))
+    TARGET_XCFLAGS+= -fno-stack-protector
+  endif
   TARGET_XSHLDFLAGS= -dynamiclib -single_module -undefined dynamic_lookup -fPIC
   TARGET_DYNXLDOPTS=
   TARGET_XSHLDFLAGS+= -install_name $(TARGET_DYLIBPATH) -compatibility_version $(MAJVER).$(MINVER) -current_version $(MAJVER).$(MINVER).$(RELVER)

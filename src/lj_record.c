@@ -1,6 +1,6 @@
 /*
 ** Trace recorder (bytecode -> SSA IR).
-** Copyright (C) 2005-2013 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2014 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lj_record_c
@@ -2131,7 +2131,7 @@ static const BCIns *rec_setup_root(jit_State *J)
   case BC_RET0:
   case BC_RET1:
     /* No bytecode range check for down-recursive root traces. */
-    J->maxslot = ra + bc_d(ins);
+    J->maxslot = ra + bc_d(ins) - 1;
     break;
   case BC_FUNCF:
     /* No bytecode range check for root traces started by a hot call. */
