@@ -36,6 +36,7 @@
 --  * m  Dump the generated machine code.
 --    x  Print each taken trace exit.
 --    X  Print each taken trace exit and the contents of all registers.
+--    a  Print the IR of aborted traces, too.
 --
 -- The output format can be set with the following characters:
 --
@@ -553,10 +554,8 @@ local function dump_trace(what, tr, func, pc, otr, oex)
     out:write("---- TRACE ", tr, " ", what)
     if otr then out:write(" ", otr, "/", oex) end
     out:write(" ", fmtfunc(func, pc), "\n")
-    recprefix = ""
   elseif what == "stop" or what == "abort" then
     out:write("---- TRACE ", tr, " ", what)
-    recprefix = nil
     if what == "abort" then
       out:write(" ", fmtfunc(func, pc), " -- ", fmterr(otr, oex), "\n")
     else
