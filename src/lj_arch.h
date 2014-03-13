@@ -64,7 +64,7 @@
 #define LUAJIT_OS	LUAJIT_OS_WINDOWS
 #elif defined(__linux__)
 #define LUAJIT_OS	LUAJIT_OS_LINUX
-#elif defined(__MACH__) && defined(__APPLE__) || defined(__DrgonFly__)
+#elif defined(__MACH__) && defined(__APPLE__) || defined(__DragonFly__)
 #define LUAJIT_OS	LUAJIT_OS_OSX
 #elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || \
       defined(__NetBSD__) || defined(__OpenBSD__)
