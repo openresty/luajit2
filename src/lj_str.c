@@ -198,7 +198,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   s->nextgc = g->strhash[h];
   /* NOBARRIER: The string table is a GC root. */
   setgcref(g->strhash[h], obj2gco(s));
-  if (g->strnum++ > g->strmask)  /* Allow a 100% load factor. */
+  if (g->strnum++ > (g->strmask >> 1))  /* Allow a 50% load factor. */
     lj_str_resize(L, (g->strmask<<1)+1);  /* Grow string table. */
   return s;  /* Return newly interned string. */
 }
