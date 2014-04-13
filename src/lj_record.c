@@ -421,6 +421,7 @@ static void rec_for_loop(jit_State *J, const BCIns *fori, ScEvEntry *scev,
     J->base[ra+FORL_IDX] = idx = emitir(IRT(IR_ADD, t), idx, step);
   J->base[ra+FORL_EXT] = idx;
   scev->idx = tref_ref(idx);
+  setmref(scev->pc, fori);
   J->maxslot = ra+FORL_EXT+1;
 }
 
@@ -436,7 +437,7 @@ static LoopEvent rec_for(jit_State *J, const BCIns *fori, int isforl)
   IRType t;
   if (isforl) {  /* Handle FORL/JFORL opcodes. */
     TRef idx = tr[FORL_IDX];
-    if (tref_ref(idx) == J->scev.idx) {
+    if (mref(J->scev.pc, const BCIns) == fori && tref_ref(idx) == J->scev.idx) {
       t = J->scev.t.irt;
       stop = J->scev.stop;
       idx = emitir(IRT(IR_ADD, t), idx, J->scev.step);
@@ -1508,10 +1509,8 @@ static void rec_varg(jit_State *J, BCReg dst, ptrdiff_t nresults)
     } else if (dst + nresults > J->maxslot) {
       J->maxslot = dst + (BCReg)nresults;
     }
-    for (i = 0; i < nresults; i++) {
-      J->base[dst+i] = i < nvararg ? J->base[i - nvararg - 1] : TREF_NIL;
-      lua_assert(J->base[dst+i] != 0);
-    }
+    for (i = 0; i < nresults; i++)
+      J->base[dst+i] = i < nvararg ? getslot(J, i - nvararg - 1) : TREF_NIL;
   } else {  /* Unknown number of varargs passed to trace. */
     TRef fr = emitir(IRTI(IR_SLOAD), 0, IRSLOAD_READONLY|IRSLOAD_FRAME);
     int32_t frofs = 8*(1+numparams)+FRAME_VARG;
@@ -2155,6 +2154,7 @@ void lj_record_setup(jit_State *J)
   memset(J->chain, 0, sizeof(J->chain));
   memset(J->bpropcache, 0, sizeof(J->bpropcache));
   J->scev.idx = REF_NIL;
+  setmref(J->scev.pc, NULL);
 
   J->baseslot = 1;  /* Invoking function is at base[-1]. */
   J->base = J->slot + J->baseslot;
