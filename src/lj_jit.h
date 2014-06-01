@@ -97,7 +97,7 @@
   _(\012, maxirconst,	500)	/* Max. # of IR constants of a trace. */ \
   _(\007, maxside,	100)	/* Max. # of side traces of a root trace. */ \
   _(\007, maxsnap,	500)	/* Max. # of snapshots for a trace. */ \
-  _(\011, minstitch,	0)	/* Min. # of IR ins for a stitched trace. */ \
+  _(\011, minstitch,	1000000)	/* Min. # of IR ins for a stitched trace. */ \
   \
   _(\007, hotloop,	56)	/* # of iter. to detect a hot loop/call. */ \
   _(\007, hotexit,	10)	/* # of taken exits to start a side trace. */ \
