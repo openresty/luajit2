@@ -288,15 +288,15 @@ ifeq (Windows,$(TARGET_SYS))
   TARGET_XSHLDFLAGS= -shared
   TARGET_DYNXLDOPTS=
 else
+ifeq (,$(shell $(TARGET_CC) -o /dev/null -c -x c /dev/null -fno-stack-protector 2>/dev/null || echo 1))
+  TARGET_XCFLAGS+= -fno-stack-protector
+endif
 ifeq (Darwin,$(TARGET_SYS))
   ifeq (,$(MACOSX_DEPLOYMENT_TARGET))
     export MACOSX_DEPLOYMENT_TARGET=10.4
   endif
   TARGET_STRIP+= -x
   TARGET_AR+= 2>/dev/null
-  ifeq (,$(shell $(TARGET_CC) -o /dev/null -c -x c /dev/null -fno-stack-protector 2>/dev/null || echo 1))
-    TARGET_XCFLAGS+= -fno-stack-protector
-  endif
   TARGET_XSHLDFLAGS= -dynamiclib -single_module -undefined dynamic_lookup -fPIC
   TARGET_DYNXLDOPTS=
   TARGET_XSHLDFLAGS+= -install_name $(TARGET_DYLIBPATH) -compatibility_version $(MAJVER).$(MINVER) -current_version $(MAJVER).$(MINVER).$(RELVER)
@@ -308,14 +308,10 @@ else
 ifeq (iOS,$(TARGET_SYS))
   TARGET_STRIP+= -x
   TARGET_AR+= 2>/dev/null
-  TARGET_XCFLAGS+= -fno-stack-protector
   TARGET_XSHLDFLAGS= -dynamiclib -single_module -undefined dynamic_lookup -fPIC
   TARGET_DYNXLDOPTS=
   TARGET_XSHLDFLAGS+= -install_name $(TARGET_DYLIBPATH) -compatibility_version $(MAJVER).$(MINVER) -current_version $(MAJVER).$(MINVER).$(RELVER)
 else
-  ifneq (,$(findstring stack-protector,$(shell $(TARGET_CC) -dumpspecs)))
-    TARGET_XCFLAGS+= -fno-stack-protector
-  endif
   ifneq (SunOS,$(TARGET_SYS))
     ifneq (PS3,$(TARGET_SYS))
       TARGET_XLDFLAGS+= -Wl,-E
@@ -439,7 +435,7 @@ BUILDVM_X= $(BUILDVM_T)
 HOST_O= $(MINILUA_O) $(BUILDVM_O)
 HOST_T= $(MINILUA_T) $(BUILDVM_T)
 
-LJVM_S= lj_vm.s
+LJVM_S= lj_vm.S
 LJVM_O= lj_vm.o
 LJVM_BOUT= $(LJVM_S)
 LJVM_MODE= elfasm
@@ -647,7 +643,7 @@ lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
 	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:.o=_dyn.o) $<
 	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
 
-%.o: %.s
+%.o: %.S
 	$(E) "ASM       $@"
 	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:.o=_dyn.o) $<
 	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
