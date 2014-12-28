@@ -1101,7 +1101,7 @@ LUA_API int lua_yield(lua_State *L, int nresults)
       top->u64 = cframe_multres(cf);
       setcont(top+1, lj_cont_hook);
       setframe_pc(top+1, cframe_pc(cf)-1);
-      setframe_gc(top+2, obj2gco(L));
+      setframe_gc(top+2, obj2gco(L), LJ_TTHREAD);
       setframe_ftsz(top+2, ((char *)(top+3)-(char *)L->base)+FRAME_CONT);
       L->top = L->base = top+3;
 #if LJ_TARGET_X64
@@ -1150,7 +1150,7 @@ LUA_API int lua_gc(lua_State *L, int what, int data)
     res = (int)(g->gc.total & 0x3ff);
     break;
   case LUA_GCSTEP: {
-    MSize a = (MSize)data << 10;
+    GCSize a = (GCSize)data << 10;
     g->gc.threshold = (a <= g->gc.total) ? (g->gc.total - a) : 0;
     while (g->gc.total >= g->gc.threshold)
       if (lj_gc_step(L) > 0) {
