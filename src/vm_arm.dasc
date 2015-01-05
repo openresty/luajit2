@@ -1,6 +1,6 @@
 |// Low-level VM code for ARM CPUs.
 |// Bytecode interpreter, fast functions and helper functions.
-|// Copyright (C) 2005-2014 Mike Pall. See Copyright Notice in luajit.h
+|// Copyright (C) 2005-2015 Mike Pall. See Copyright Notice in luajit.h
 |
 |.arch arm
 |.section code_op, code_sub
@@ -539,9 +539,8 @@ static void build_subroutines(BuildCtx *ctx)
   |1:
   |  beq ->cont_ffi_callback		// cont = 1: return from FFI callback.
   |  // cont = 0: tailcall from C function.
-  |  ldr CARG3, [BASE, FRAME_FUNC]
-  |   sub CARG4, CARG4, #16
-  |   sub RC, CARG4, BASE
+  |  sub CARG4, CARG4, #16
+  |  sub RC, CARG4, BASE
   |  b ->vm_call_tail
   |.endif
   |
