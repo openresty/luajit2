@@ -48,8 +48,8 @@ CCOPT= -O2 -fomit-frame-pointer
 CCOPT_x86= -march=i686 -msse -msse2 -mfpmath=sse
 CCOPT_x64=
 CCOPT_arm=
+CCOPT_arm64=
 CCOPT_ppc=
-CCOPT_ppcspe=
 CCOPT_mips=
 #
 CCDEBUG=
@@ -217,11 +217,11 @@ else
 ifneq (,$(findstring LJ_TARGET_ARM ,$(TARGET_TESTARCH)))
   TARGET_LJARCH= arm
 else
+ifneq (,$(findstring LJ_TARGET_ARM64 ,$(TARGET_TESTARCH)))
+  TARGET_LJARCH= arm64
+else
 ifneq (,$(findstring LJ_TARGET_PPC ,$(TARGET_TESTARCH)))
   TARGET_LJARCH= ppc
-else
-ifneq (,$(findstring LJ_TARGET_PPCSPE ,$(TARGET_TESTARCH)))
-  TARGET_LJARCH= ppcspe
 else
 ifneq (,$(findstring LJ_TARGET_MIPS ,$(TARGET_TESTARCH)))
   ifneq (,$(findstring MIPSEL ,$(TARGET_TESTARCH)))
@@ -402,7 +402,9 @@ ifeq (Windows,$(TARGET_SYS))
   DASM_AFLAGS+= -D WIN
 endif
 ifeq (x64,$(TARGET_LJARCH))
-  DASM_ARCH= x86
+  ifeq (,$(findstring LJ_FR2 1,$(TARGET_TESTARCH)))
+    DASM_ARCH= x86
+  endif
 else
 ifeq (arm,$(TARGET_LJARCH))
   ifeq (iOS,$(TARGET_SYS))

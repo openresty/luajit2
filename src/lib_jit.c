@@ -695,6 +695,8 @@ static uint32_t jit_cpudetect(lua_State *L)
 	   ver >= 60 ? JIT_F_ARMV6_ : 0;
   flags |= LJ_ARCH_HASFPU == 0 ? 0 : ver >= 70 ? JIT_F_VFPV3 : JIT_F_VFPV2;
 #endif
+#elif LJ_TARGET_ARM64
+  /* No optional CPU features to detect (for now). */
 #elif LJ_TARGET_PPC
 #if LJ_HASJIT
 #if LJ_ARCH_SQRT
@@ -704,8 +706,6 @@ static uint32_t jit_cpudetect(lua_State *L)
   flags |= JIT_F_ROUND;
 #endif
 #endif
-#elif LJ_TARGET_PPCSPE
-  /* Nothing to do. */
 #elif LJ_TARGET_MIPS
 #if LJ_HASJIT
   /* Compile-time MIPS CPU detection. */
