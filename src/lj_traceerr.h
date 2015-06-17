@@ -12,6 +12,7 @@ TREDEF(TRACEOV,	"trace too long")
 TREDEF(STACKOV,	"trace too deep")
 TREDEF(SNAPOV,	"too many snapshots")
 TREDEF(BLACKL,	"blacklisted")
+TREDEF(RETRY,	"retry recording")
 TREDEF(NYIBC,	"NYI: bytecode %d")
 
 /* Recording loop ops. */
@@ -24,6 +25,8 @@ TREDEF(BADTYPE,	"bad argument type")
 TREDEF(CJITOFF,	"JIT compilation disabled for function")
 TREDEF(CUNROLL,	"call unroll limit reached")
 TREDEF(DOWNREC,	"down-recursion, restarting")
+TREDEF(NYICF,	"NYI: C function %p")
+TREDEF(NYIFF,	"NYI: FastFunc %s")
 TREDEF(NYIFFU,	"NYI: unsupported variant of FastFunc %s")
 TREDEF(NYIRETL,	"NYI: return to lower frame")
 

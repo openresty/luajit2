@@ -58,10 +58,10 @@
 ** EXT cannot be enabled on WIN32 since system exceptions use code-driven SEH.
 ** EXT is mandatory on WIN64 since the calling convention has an abundance
 ** of callee-saved registers (rbx, rbp, rsi, rdi, r12-r15, xmm6-xmm15).
-** EXT is mandatory on POSIX/x64 since the interpreter doesn't save r12/r13.
+** The POSIX/x64 interpreter only saves r12/r13 for INT (e.g. PS4).
 */
 
-#if defined(__GNUC__) && (LJ_TARGET_X64 || defined(LUAJIT_UNWIND_EXTERNAL))
+#if defined(__GNUC__) && (LJ_TARGET_X64 || defined(LUAJIT_UNWIND_EXTERNAL)) && !LJ_NO_UNWIND
 #define LJ_UNWIND_EXT	1
 #elif LJ_TARGET_X64 && LJ_TARGET_WINDOWS
 #define LJ_UNWIND_EXT	1
@@ -119,7 +119,7 @@ static void *err_unwind(lua_State *L, void *stopcf, int errcode)
       if (errcode) {
 	L->base = frame_prevd(frame) + 1;
 	L->cframe = cframe_prev(cf);
-	unwindstack(L, frame);
+	unwindstack(L, frame - LJ_FR2);
       } else if (cf != stopcf) {
 	cf = cframe_prev(cf);
 	frame = frame_prevd(frame);
@@ -144,7 +144,7 @@ static void *err_unwind(lua_State *L, void *stopcf, int errcode)
       if (errcode) {
 	L->base = frame_prevd(frame) + 1;
 	L->cframe = cframe_prev(cf);
-	unwindstack(L, frame);
+	unwindstack(L, frame - LJ_FR2);
       }
       return cf;
     case FRAME_CONT:  /* Continuation frame. */

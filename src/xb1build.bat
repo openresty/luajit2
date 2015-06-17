@@ -1,15 +1,15 @@
-@rem Script to build LuaJIT with the PS4 SDK.
+@rem Script to build LuaJIT with the Xbox One SDK.
 @rem Donated to the public domain.
 @rem
 @rem Open a "Visual Studio .NET Command Prompt" (64 bit host compiler)
 @rem Then cd to this directory and run this script.
 
 @if not defined INCLUDE goto :FAIL
-@if not defined SCE_ORBIS_SDK_DIR goto :FAIL
+@if not defined DurangoXDK goto :FAIL
 
 @setlocal
-@rem ---- Host compiler ----
-@set LJCOMPILE=cl /nologo /c /MD /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE
+@echo ---- Host compiler ----
+@set LJCOMPILE=cl /nologo /c /MD /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE /DLUAJIT_ENABLE_GC64
 @set LJLINK=link /nologo
 @set LJMT=mt /nologo
 @set DASMDIR=..\dynasm
@@ -23,22 +23,22 @@
 if exist minilua.exe.manifest^
   %LJMT% -manifest minilua.exe.manifest -outputresource:minilua.exe
 
-@rem Check for 64 bit host compiler.
+@rem Error out for 64 bit host compiler
 @minilua
 @if not errorlevel 8 goto :FAIL
 
-@set DASMFLAGS=-D P64 -D NO_UNWIND
-minilua %DASM% -LN %DASMFLAGS% -o host\buildvm_arch.h vm_x86.dasc
+@set DASMFLAGS=-D WIN -D FFI -D P64
+minilua %DASM% -LN %DASMFLAGS% -o host\buildvm_arch.h vm_x64.dasc
 @if errorlevel 1 goto :BAD
 
-%LJCOMPILE% /I "." /I %DASMDIR% -DLUAJIT_TARGET=LUAJIT_ARCH_X64 -DLUAJIT_OS=LUAJIT_OS_OTHER -DLUAJIT_DISABLE_JIT -DLUAJIT_DISABLE_FFI -DLUAJIT_NO_UNWIND host\buildvm*.c
+%LJCOMPILE% /I "." /I %DASMDIR% /D_DURANGO host\buildvm*.c
 @if errorlevel 1 goto :BAD
 %LJLINK% /out:buildvm.exe buildvm*.obj
 @if errorlevel 1 goto :BAD
 if exist buildvm.exe.manifest^
   %LJMT% -manifest buildvm.exe.manifest -outputresource:buildvm.exe
 
-buildvm -m elfasm -o lj_vm.s
+buildvm -m peobj -o lj_vm.obj
 @if errorlevel 1 goto :BAD
 buildvm -m bcdef -o lj_bcdef.h %ALL_LIB%
 @if errorlevel 1 goto :BAD
@@ -53,51 +53,49 @@ buildvm -m vmdef -o jit\vmdef.lua %ALL_LIB%
 buildvm -m folddef -o lj_folddef.h lj_opt_fold.c
 @if errorlevel 1 goto :BAD
 
-@rem ---- Cross compiler ----
-@set LJCOMPILE="%SCE_ORBIS_SDK_DIR%\host_tools\bin\orbis-clang" -c -Wall -DLUAJIT_DISABLE_FFI
-@set LJLIB="%SCE_ORBIS_SDK_DIR%\host_tools\bin\orbis-ar" rcus
-@set INCLUDE=""
+@echo ---- Cross compiler ----
 
-orbis-as -o lj_vm.o lj_vm.s
-
-@if "%1" neq "debug" goto :NODEBUG
+@set CWD=%cd%
+@call "%DurangoXDK%\xdk\DurangoVars.cmd" XDK
+@cd /D "%CWD%"
 @shift
-@set LJCOMPILE=%LJCOMPILE% -g -O0
-@set TARGETLIB=libluajitD.a
-goto :BUILD
-:NODEBUG
-@set LJCOMPILE=%LJCOMPILE% -O2
-@set TARGETLIB=libluajit.a
-:BUILD
-del %TARGETLIB%
-@if "%1"=="amalg" goto :AMALG
-for %%f in (lj_*.c lib_*.c) do (
-  %LJCOMPILE% %%f
-  @if errorlevel 1 goto :BAD
+
+@set LJCOMPILE="cl" /nologo /c /W3 /GF /Gm- /GR- /GS- /Gy /openmp- /D_CRT_SECURE_NO_DEPRECATE /D_LIB /D_UNICODE /D_DURANGO
+@set LJLIB="lib" /nologo
+
+@if "%1"=="debug" (
+  @shift
+  @set LJCOMPILE=%LJCOMPILE% /Zi /MDd /Od
+  @set LJLINK=%LJLINK% /debug 
+) else (
+  @set LJCOMPILE=%LJCOMPILE% /MD /O2 /DNDEBUG
 )
 
-%LJLIB% %TARGETLIB% lj_*.o lib_*.o
+@if "%1"=="amalg" goto :AMALG
+%LJCOMPILE% /DLUA_BUILD_AS_DLL lj_*.c lib_*.c
+@if errorlevel 1 goto :BAD
+%LJLIB% /OUT:luajit.lib lj_*.obj lib_*.obj
 @if errorlevel 1 goto :BAD
 @goto :NOAMALG
 :AMALG
-%LJCOMPILE% ljamalg.c
+%LJCOMPILE% /DLUA_BUILD_AS_DLL ljamalg.c
 @if errorlevel 1 goto :BAD
-%LJLIB% %TARGETLIB% ljamalg.o lj_vm.o
+%LJLIB% /OUT:luajit.lib ljamalg.obj lj_vm.obj
 @if errorlevel 1 goto :BAD
 :NOAMALG
 
-@del *.o *.obj *.manifest minilua.exe buildvm.exe
+@del *.obj *.manifest minilua.exe buildvm.exe
 @echo.
-@echo === Successfully built LuaJIT for PS4 ===
+@echo === Successfully built LuaJIT for Xbox One ===
 
 @goto :END
 :BAD
 @echo.
 @echo *******************************************************
 @echo *** Build FAILED -- Please check the error messages ***
-@echo *******************************************************
+@echo *******************************************************
 @goto :END
 :FAIL
 @echo To run this script you must open a "Visual Studio .NET Command Prompt"
-@echo (64 bit host compiler). The PS4 Orbis SDK must be installed, too.
+@echo (64 bit host compiler). The Xbox One SDK must be installed, too.
 :END
