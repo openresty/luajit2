@@ -183,7 +183,7 @@ in <tt>"-inf"</tt>.
 <h3 id="tonumber"><tt>tonumber()</tt> etc. use builtin string to number conversion</h3>
 <p>
 All string-to-number conversions consistently convert integer and
-floating-point inputs in decimal and hexadecimal on all platforms.
+floating-point inputs in decimal, hexadecimal and binary on all platforms.
 <tt>strtod()</tt> is <em>not</em> used anymore, which avoids numerous
 problems with poor C library implementations. The builtin conversion
 function provides full precision according to the IEEE-754 standard, it
@@ -206,6 +206,11 @@ bytecode compatibility versions must match. Bytecode stays compatible
 for dot releases (x.y.0 &rarr; x.y.1), but may change with major or
 minor releases (2.0 &rarr; 2.1) or between any beta release. Foreign
 bytecode (e.g. from Lua 5.1) is incompatible and cannot be loaded.
+</p>
+<p>
+Note: <tt>LJ_GC64</tt> mode requires a different frame layout, which implies
+a different, incompatible bytecode format for ports that use this mode (e.g.
+ARM64). This may be rectified in the future.
 </p>
 
 <h3 id="table_new"><tt>table.new(narray, nhash)</tt> allocates a pre-sized table</h3>
@@ -338,6 +343,13 @@ language and Lua library level. LuaJIT is API+ABI-compatible with
 Lua&nbsp;5.1, which prevents implementing features that would otherwise
 break the Lua/C API and ABI (e.g. <tt>_ENV</tt>).
 </p>
+
+<h2 id="lua53">Extensions from Lua 5.3</h2>
+<p>
+LuaJIT supports some extensions from Lua&nbsp;5.3:
+<ul>
+<li>Unicode escape <tt>'\u{XX...}'</tt> embeds the UTF-8 encoding in string literals.</li>
+</ul>
 
 <h2 id="exceptions">C++ Exception Interoperability</h2>
 <p>
