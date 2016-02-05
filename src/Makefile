@@ -388,6 +388,11 @@ DASM_XFLAGS=
 DASM_AFLAGS=
 DASM_ARCH= $(TARGET_LJARCH)
 
+ifneq (,$(findstring LJ_LE 1,$(TARGET_TESTARCH)))
+  DASM_AFLAGS+= -D ENDIAN_LE
+else
+  DASM_AFLAGS+= -D ENDIAN_BE
+endif
 ifneq (,$(findstring LJ_ARCH_BITS 64,$(TARGET_TESTARCH)))
   DASM_AFLAGS+= -D P64
 endif
@@ -622,7 +627,7 @@ $(MINILUA_T): $(MINILUA_O)
 	$(E) "HOSTLINK  $@"
 	$(Q)$(HOST_CC) $(HOST_ALDFLAGS) -o $@ $(MINILUA_O) $(MINILUA_LIBS) $(HOST_ALIBS)
 
-host/buildvm_arch.h: $(DASM_DASC) $(DASM_DEP)
+host/buildvm_arch.h: $(DASM_DASC) $(DASM_DEP) $(DASM_DIR)/*.lua
 	$(E) "DYNASM    $@"
 	$(Q)$(DASM) $(DASM_FLAGS) -o $@ $(DASM_DASC)
 
