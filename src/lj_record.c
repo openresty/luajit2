@@ -882,12 +882,7 @@ void lj_record_ret(jit_State *J, BCReg rbase, ptrdiff_t gotresults)
 static BCReg rec_mm_prep(jit_State *J, ASMFunction cont)
 {
   BCReg s, top = cont == lj_cont_cat ? J->maxslot : curr_proto(J->L)->framesize;
-#if LJ_64
-  TRef trcont = lj_ir_kptr(J, (void *)((int64_t)cont-(int64_t)lj_vm_asm_begin));
-#else
-  TRef trcont = lj_ir_kptr(J, (void *)cont);
-#endif
-  J->base[top] = trcont | TREF_CONT;
+  J->base[top] = lj_ir_kptr(J, contptr(cont)) | TREF_CONT;
   J->framedepth++;
   for (s = J->maxslot; s < top; s++)
     J->base[s] = 0;  /* Clear frame gap to avoid resurrecting previous refs. */
@@ -1693,8 +1688,11 @@ static int select_detect(jit_State *J)
   BCIns ins = J->pc[1];
   if (bc_op(ins) == BC_CALLM && bc_b(ins) == 2 && bc_c(ins) == 1) {
     cTValue *func = &J->L->base[bc_a(ins)];
-    if (tvisfunc(func) && funcV(func)->c.ffid == FF_select)
+    if (tvisfunc(func) && funcV(func)->c.ffid == FF_select) {
+      TRef kfunc = lj_ir_kfunc(J, funcV(func));
+      emitir(IRTG(IR_EQ, IRT_FUNC), getslot(J, bc_a(ins)), kfunc);
       return 1;
+    }
   }
   return 0;
 }
@@ -2156,14 +2154,14 @@ void lj_record_ins(jit_State *J)
   case BC_MODVN: case BC_MODVV:
   recmod:
     if (tref_isnumber_str(rb) && tref_isnumber_str(rc))
-      rc = lj_opt_narrow_mod(J, rb, rc, rcv);
+      rc = lj_opt_narrow_mod(J, rb, rc, rbv, rcv);
     else
       rc = rec_mm_arith(J, &ix, MM_mod);
     break;
 
   case BC_POW:
     if (tref_isnumber_str(rb) && tref_isnumber_str(rc))
-      rc = lj_opt_narrow_pow(J, lj_ir_tonum(J, rb), rc, rcv);
+      rc = lj_opt_narrow_pow(J, rb, rc, rbv, rcv);
     else
       rc = rec_mm_arith(J, &ix, MM_pow);
     break;

@@ -104,7 +104,6 @@ static void recff_stitch(jit_State *J)
   TValue *base = L->base;
   const BCIns *pc = frame_pc(base-1);
   TValue *pframe = frame_prevl(base-1);
-  TRef trcont;
 
   lua_assert(!LJ_FR2);  /* TODO_FR2: handle frame shift. */
   /* Move func + args up in Lua stack and insert continuation. */
@@ -118,12 +117,7 @@ static void recff_stitch(jit_State *J)
 
   /* Ditto for the IR. */
   memmove(&J->base[1], &J->base[-1], sizeof(TRef)*(J->maxslot+1));
-#if LJ_64
-  trcont = lj_ir_kptr(J, (void *)((int64_t)cont-(int64_t)lj_vm_asm_begin));
-#else
-  trcont = lj_ir_kptr(J, (void *)cont);
-#endif
-  J->base[0] = trcont | TREF_CONT;
+  J->base[0] = lj_ir_kptr(J, contptr(cont)) | TREF_CONT;
   J->ktracep = lj_ir_k64_reserve(J);
   lua_assert(irt_toitype_(IRT_P64) == LJ_TTRACE);
   J->base[-1] = emitir(IRT(IR_XLOAD, IRT_P64), lj_ir_kptr(J, &J->ktracep->gcr), 0);
@@ -613,10 +607,8 @@ static void LJ_FASTCALL recff_math_modf(jit_State *J, RecordFFData *rd)
 
 static void LJ_FASTCALL recff_math_pow(jit_State *J, RecordFFData *rd)
 {
-  TRef tr = lj_ir_tonum(J, J->base[0]);
-  if (!tref_isnumber_str(J->base[1]))
-    lj_trace_err(J, LJ_TRERR_BADTYPE);
-  J->base[0] = lj_opt_narrow_pow(J, tr, J->base[1], &rd->argv[1]);
+  J->base[0] = lj_opt_narrow_pow(J, J->base[0], J->base[1],
+				 &rd->argv[0], &rd->argv[1]);
   UNUSED(rd);
 }
 
