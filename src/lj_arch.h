@@ -350,7 +350,7 @@
 #error "Need at least GCC 3.4 or newer"
 #endif
 #elif LJ_TARGET_X64
-#if __GNUC__ < 4
+#if 0 && __GNUC__ < 4
 #error "Need at least GCC 4.0 or newer"
 #endif
 #elif LJ_TARGET_ARM
