@@ -325,11 +325,11 @@ static Reg asm_fuseload(ASMState *as, IRRef ref, RegSet allow)
       as->mrm.base = as->mrm.idx = RID_NONE;
       return RID_MRM;
     }
-  } else if (ir->o == IR_KINT64) {
+  } else if (ref == REF_BASE || ir->o == IR_KINT64) {
     RegSet avail = as->freeset & ~as->modset & RSET_GPR;
     lua_assert(allow != RSET_EMPTY);
     if (!(avail & (avail-1))) {  /* Fuse if less than two regs available. */
-      as->mrm.ofs = ptr2addr(ir_kint64(ir));
+      as->mrm.ofs = ptr2addr(ref == REF_BASE ? (void *)&J2G(as->J)->jit_base : (void *)ir_kint64(ir));
       as->mrm.base = as->mrm.idx = RID_NONE;
       return RID_MRM;
     }
@@ -369,7 +369,7 @@ static Reg asm_fuseload(ASMState *as, IRRef ref, RegSet allow)
       return RID_MRM;
     }
   }
-  if (!(as->freeset & allow) && !irref_isk(ref) &&
+  if (!(as->freeset & allow) && !emit_canremat(ref) &&
       (allow == RSET_EMPTY || ra_hasspill(ir->s) || iscrossref(as, ref)))
     goto fusespill;
   return ra_allocref(as, ref, allow);
@@ -1215,7 +1215,6 @@ static void asm_newref(ASMState *as, IRIns *ir)
 
 static void asm_uref(ASMState *as, IRIns *ir)
 {
-  /* NYI: Check that UREFO is still open and not aliasing a slot. */
   Reg dest = ra_dest(as, ir, RSET_GPR);
   if (irref_isk(ir->op1)) {
     GCfunc *fn = ir_kfunc(IR(ir->op1));
@@ -2836,9 +2835,9 @@ static uint32_t asm_x86_inslen(const uint8_t* p)
     case 4: result -= (prefixes & 2);  /* fallthrough */
     case 5: return result + (x & 15);
     case 6:  /* Group 3. */
-      if (p[1] & 0x38) return result + 2;
-      if ((prefixes & 2) && (x == 0x66)) return result + 4;
-      return result + (x & 15);
+      if (p[1] & 0x38) x = 2;
+      else if ((prefixes & 2) && (x == 0x66)) x = 4;
+      goto mrm;
     case 7: /* VEX c4/c5. */
       if (LJ_32 && p[1] < 0xc0) {
 	x = 2;
