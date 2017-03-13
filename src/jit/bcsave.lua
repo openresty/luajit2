@@ -621,7 +621,7 @@ local function docmd(...)
 	  list = true
     elseif opt == "L" then
 	  list = true
-      lineinfo = true
+	  lineinfo = true
 	elseif opt == "s" then
 	  ctx.strip = true
 	elseif opt == "g" then
