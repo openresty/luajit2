@@ -1,6 +1,6 @@
 /*
 ** FFI C call handling.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #include "lj_obj.h"
@@ -331,7 +331,7 @@
 
 #define CCALL_HANDLE_COMPLEXARG \
   /* Pass complex by value in separate (!) FPRs or on stack. */ \
-  isfp = ctr->size == 2*sizeof(float) ? 2 : 1;
+  isfp = sz == 2*sizeof(float) ? 2 : 1;
 
 #define CCALL_HANDLE_REGARG \
   if (LJ_TARGET_IOS && isva) { \

@@ -1,6 +1,6 @@
 /*
 ** x86/x64 IR assembler (SSA IR -> machine code).
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 /* -- Guard handling ------------------------------------------------------ */
@@ -234,10 +234,10 @@ static void asm_fusefref(ASMState *as, IRIns *ir, RegSet allow)
   as->mrm.idx = RID_NONE;
   if (ir->op1 == REF_NIL) {
 #if LJ_GC64
-    as->mrm.ofs = (int32_t)ir->op2 - GG_OFS(dispatch);
+    as->mrm.ofs = (int32_t)(ir->op2 << 2) - GG_OFS(dispatch);
     as->mrm.base = RID_DISPATCH;
 #else
-    as->mrm.ofs = (int32_t)ir->op2 + ptr2addr(J2GG(as->J));
+    as->mrm.ofs = (int32_t)(ir->op2 << 2) + ptr2addr(J2GG(as->J));
     as->mrm.base = RID_NONE;
 #endif
     return;
@@ -1065,7 +1065,8 @@ static void asm_tvptr(ASMState *as, Reg dest, IRRef ref)
 	emit_u32(as, irt_toitype(ir->t) << 15);
 	emit_rmro(as, XO_ARITHi, XOg_OR, dest, 4);
       } else {
-	emit_movmroi(as, dest, 4, (irt_toitype(ir->t) << 15) | 0x7fff);
+	/* Currently, no caller passes integers that might end up here. */
+	emit_movmroi(as, dest, 4, (irt_toitype(ir->t) << 15));
       }
       emit_movtomro(as, REX_64IR(ir, src), dest, 0);
     }
