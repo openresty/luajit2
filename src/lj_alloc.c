@@ -168,6 +168,15 @@ static LJ_AINLINE int CALL_MUNMAP(void *ptr, size_t size)
 #include <errno.h>
 #include <sys/mman.h>
 
+#ifdef USE_LJMM
+	void *ljmm_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t);
+	int ljmm_munmap(void *addr, size_t length);
+	void *ljmm_mremap(void *old_address, size_t old_size, size_t new_size, int flags, ...);
+	#define mmap ljmm_mmap
+	#define munmp ljmm_munmap
+	#define mremap ljmm_mremap
+#endif
+
 #define MMAP_PROT		(PROT_READ|PROT_WRITE)
 #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
 #define MAP_ANONYMOUS		MAP_ANON

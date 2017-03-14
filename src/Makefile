@@ -457,6 +457,13 @@ LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
 	 lib_io.o lib_os.o lib_package.o lib_debug.o lib_jit.o lib_ffi.o
 LJLIB_C= $(LJLIB_O:.o=.c)
 
+ifeq (x64,$(TARGET_LJARCH))
+ifneq (, $(LJMM_DIR))
+CCOPT += -DUSE_LJMM
+LJMM_O := $(LJMM_DIR)/ljmm-combined.o
+endif
+endif
+
 LJCORE_O= lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o \
 	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
 	  lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o lj_strscan.o \
@@ -468,7 +475,7 @@ LJCORE_O= lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o \
 	  lj_ctype.o lj_cdata.o lj_cconv.o lj_ccall.o lj_ccallback.o \
 	  lj_carith.o lj_clib.o lj_cparse.o \
 	  lj_lib.o lj_alloc.o lib_aux.o \
-	  $(LJLIB_O) lib_init.o
+	  $(LJLIB_O) $(LJMM_O) lib_init.o
 
 LJVMCORE_O= $(LJVM_O) $(LJCORE_O)
 LJVMCORE_DYNO= $(LJVMCORE_O:.o=_dyn.o)
@@ -572,6 +579,16 @@ E= @echo
 ##############################################################################
 
 default all:	$(TARGET_T)
+
+ifeq (x64,$(TARGET_LJARCH))
+ifneq (, $(LJMM_DIR))
+$(LJMM_DIR)/ljmm-combined.o :
+	$(MAKE) CC=$(CC) OPT_FLAGS="$(CCOPT)" -C $(LJMM_DIR)
+
+$(TARGET_T) : $(LJMM_DIR)/ljmm-combined.o
+
+endif
+endif
 
 amalg:
 	@grep "^[+|]" ljamalg.c
