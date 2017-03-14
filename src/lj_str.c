@@ -163,7 +163,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   if (LJ_LIKELY((((uintptr_t)str+len-1) & (LJ_PAGESIZE-1)) <= LJ_PAGESIZE-4)) {
     while (o != NULL) {
       GCstr *sx = gco2str(o);
-      if (sx->len == len && str_fastcmp(str, strdata(sx), len) == 0) {
+      if (sx->len == len && sx->hash == h && str_fastcmp(str, strdata(sx), len) == 0) {
 	/* Resurrect if dead. Can only happen with fixstring() (keywords). */
 	if (isdead(g, o)) flipwhite(o);
 	return sx;  /* Return existing string. */
@@ -174,7 +174,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
 #endif
     while (o != NULL) {
       GCstr *sx = gco2str(o);
-      if (sx->len == len && memcmp(str, strdata(sx), len) == 0) {
+      if (sx->len == len && sx->hash == h && memcmp(str, strdata(sx), len) == 0) {
 	/* Resurrect if dead. Can only happen with fixstring() (keywords). */
 	if (isdead(g, o)) flipwhite(o);
 	return sx;  /* Return existing string. */
