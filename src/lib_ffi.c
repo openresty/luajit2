@@ -720,45 +720,57 @@ LJLIB_CF(ffi_fill)	LJLIB_REC(.)
   return 0;
 }
 
-#define H_(le, be)	LJ_ENDIAN_SELECT(0x##le, 0x##be)
+#define HASH_(l, c1, c2) (((int)(l)) << 16 | ((size_t)(c1)) << 8 | (c2))
+#define H_(s, c1, c2) HASH_(sizeof((s)) - 1, c1, c2)
 
 /* Test ABI string. */
 LJLIB_CF(ffi_abi)	LJLIB_REC(.)
 {
   GCstr *s = lj_lib_checkstr(L, 1);
   int b = 0;
-  switch (s->hash) {
+  int hash = s->len >= 2 ? HASH_(s->len, strdata(s)[0], strdata(s)[1]): 0;
+  switch (hash) {
+#define STR_CASE_(str, c1, c2) case H_(str, c1, c2): if (lj_str_equ(s, str, sizeof(s) - 1)) { break; }
 #if LJ_64
-  case H_(849858eb,ad35fd06): b = 1; break;  /* 64bit */
+  STR_CASE_("64bit", '6', '4'); b = 1; break;  /* 64bit */
 #else
-  case H_(662d3c79,d0e22477): b = 1; break;  /* 32bit */
+  STR_CASE_("32bit", '3', '2'); b = 1; break;  /* 32bit */
 #endif
 #if LJ_ARCH_HASFPU
-  case H_(e33ee463,e33ee463): b = 1; break;  /* fpu */
+  STR_CASE_("fpu", 'f', 'p'); b = 1; break;  /* fpu */
 #endif
 #if LJ_ABI_SOFTFP
-  case H_(61211a23,c2e8c81c): b = 1; break;  /* softfp */
+  STR_CASE_("softfp", 's', 'o'); b = 1; break;  /* softfp */
 #else
-  case H_(539417a8,8ce0812f): b = 1; break;  /* hardfp */
+  STR_CASE_("hardfp", 'h', 'a'); b = 1; break;  /* hardfp */
 #endif
 #if LJ_ABI_EABI
-  case H_(2182df8f,f2ed1152): b = 1; break;  /* eabi */
+  STR_CASE_("eabi", 'e', 'a'); b = 1; break;  /* eabi */
 #endif
 #if LJ_ABI_WIN
-  case H_(4ab624a8,4ab624a8): b = 1; break;  /* win */
+  STR_CASE_("win", 'w', 'i'); b = 1; break;  /* win */
 #endif
-  case H_(3af93066,1f001464): b = 1; break;  /* le/be */
+
+#if LJ_ARCH_ENDIAN == LUAJIT_BE
+  STR_CASE_("'be", 'b', 'e'); b = 1; break;  /* be */
+#else
+  STR_CASE_("le", 'l', 'e'); b = 1; break;  /* le */
+#endif
+
 #if LJ_GC64
-  case H_(9e89d2c9,13c83c92): b = 1; break;  /* gc64 */
+  STR_CASE_("gc64", 'g', 'c'); b = 1; break;  /* gc64 */
 #endif
   default:
     break;
+#undef STR_CASE_
   }
   setboolV(L->top-1, b);
   setboolV(&G(L)->tmptv2, b);  /* Remember for trace recorder. */
   return 1;
 }
 
+#undef HASH_
+#undef E_
 #undef H_
 
 LJLIB_PUSH(top-8) LJLIB_SET(!)  /* Store reference to miscmap table. */

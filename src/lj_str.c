@@ -68,6 +68,18 @@ static LJ_AINLINE int str_fastcmp(const char *a, const char *b, MSize len)
   return 0;
 }
 
+int32_t LJ_FASTCALL lj_str_equ(GCstr *a, const char *b, MSize b_len)
+{
+  if (a->len != b_len) {
+    return 1;
+  }
+
+  /* Do *NOT* transpose the 1st and 2nd argument, as the 2nd argument must be
+   * aligned at least at 4-byte boundary.
+   */
+  return str_fastcmp(b, strdata(a), b_len);
+}
+
 /* Find fixed string p inside string s. */
 const char *lj_str_find(const char *s, const char *p, MSize slen, MSize plen)
 {
