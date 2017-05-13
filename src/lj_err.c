@@ -510,7 +510,7 @@ LJ_NOINLINE void LJ_FASTCALL lj_err_throw(lua_State *L, int errcode)
   lj_trace_abort(g);
   g->saved_jit_base = g->jit_base;
   setmref(g->jit_base, NULL);
-  L->status = 0;
+  L->status = LUA_OK;
 #if LJ_UNWIND_EXT
   err_raise_ext(errcode);
   /*
