@@ -221,8 +221,8 @@ static void *mcode_alloc(jit_State *J, size_t sz)
   */
 #if LJ_TARGET_MIPS
   /* Use the middle of the 256MB-aligned region. */
-  uintptr_t target = ((uintptr_t)(void *)lj_vm_exit_handler & 0xf0000000u) +
-		     0x08000000u;
+  uintptr_t target = ((uintptr_t)(void *)lj_vm_exit_handler &
+		      ~(uintptr_t)0x0fffffffu) + 0x08000000u;
 #else
   uintptr_t target = (uintptr_t)(void *)lj_vm_exit_handler & ~(uintptr_t)0xffff;
 #endif
