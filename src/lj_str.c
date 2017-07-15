@@ -47,6 +47,7 @@ int32_t LJ_FASTCALL lj_str_cmp(GCstr *a, GCstr *b)
   return (int32_t)(a->len - b->len);
 }
 
+#ifndef LUAJIT_USE_VALGRIND
 /* Fast string data comparison. Caveat: unaligned access to 1st string! */
 static LJ_AINLINE int str_fastcmp(const char *a, const char *b, MSize len)
 {
@@ -67,6 +68,7 @@ static LJ_AINLINE int str_fastcmp(const char *a, const char *b, MSize len)
   } while (i < len);
   return 0;
 }
+#endif
 
 /* Find fixed string p inside string s. */
 const char *lj_str_find(const char *s, const char *p, MSize slen, MSize plen)
