@@ -1,0 +1,49 @@
+sudo: required
+dist: trusty
+
+os: linux
+
+language: c
+
+compiler:
+  - gcc
+  - clang
+
+addons:
+  apt:
+    packages:
+    - axel
+    - cpanminus
+    - libtest-base-perl
+    - libtext-diff-perl
+    - libtest-longstring-perl
+    - liblist-moreutils-perl
+    - libparallel-forkmanager-perl
+    - libgd-dev
+    - libmpc-dev
+    - build-essential
+    - libgtk2.0-dev
+    - valgrind
+
+env:
+  global:
+  - JOBS=3
+  - LUAJIT_PREFIX=/opt/luajit21
+  - LUAJIT_SYSM_PREFIX=/opt/luajit21-sysm
+
+install:
+  - git clone https://github.com/openresty/luajit2-test-suite.git ../luajit2-test-suite
+
+script:
+  - valgrind --version
+  - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_PREFIX CC=$CC XCFLAGS='-DLUA_USE_APICHECK -DLUA_USE_ASSERT -DLUAJIT_NUMMODE=2 -msse4.2 -O1' > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make install PREFIX=$LUAJIT_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
+  - cd ../luajit2-test-suite
+  - ./run-tests -j $JOBS $LUAJIT_PREFIX
+  - echo "starting valgrind mod"
+  - cd ../luajit2
+  - make clean
+  - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_SYSM_PREFIX CC=$CC XCFLAGS='-DLUAJIT_NUMMODE=2 -DLUA_USE_APICHECK -DLUA_USE_ASSERT -DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC -O1 -msse4.2' > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make install PREFIX=$LUAJIT_SYSM_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
+  - cd ../luajit2-test-suite
+  - ./run-tests -j $JOBS -v $LUAJIT_SYSM_PREFIX
