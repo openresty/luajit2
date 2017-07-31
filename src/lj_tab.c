@@ -686,3 +686,8 @@ MSize LJ_FASTCALL lj_tab_len(GCtab *t)
   return unbound_search(t, j);
 }
 
+
+GCtab * LJ_FASTCALL lj_tab_clone(lua_State *L, const GCtab *src)
+{
+  return lj_tab_dup(L, src);
+}
