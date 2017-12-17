@@ -166,6 +166,15 @@ static void io_file_readall(lua_State *L, FILE *fp)
     char *buf = lj_buf_tmp(L, m);
     n += (MSize)fread(buf+n, 1, m-n, fp);
     if (n != m) {
+      if (ferror(fp) != 0 && errno == EINTR) {
+        do {
+          n += (MSize)fread(buf+n, 1, m-n, fp);
+        } while (ferror(fp) != 0 && errno == EINTR);
+
+        if (n == m) {
+          continue;
+        }
+      }
       setstrV(L, L->top++, lj_str_new(L, buf, (size_t)n));
       lj_gc_check(L);
       return;
