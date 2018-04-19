@@ -41,7 +41,7 @@ script:
   - cd ../luajit2-test-suite
   - ./run-tests -j $JOBS $LUAJIT_PREFIX
   - echo "starting valgrind mod"
-  - cd ../luajit2
+  - cd -
   - make clean
   - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_SYSM_PREFIX CC=$CC XCFLAGS='-DLUAJIT_NUMMODE=2 -DLUA_USE_APICHECK -DLUA_USE_ASSERT -DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC -O1 -msse4.2' > build.log 2>&1 || (cat build.log && exit 1)
   - sudo make install PREFIX=$LUAJIT_SYSM_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
