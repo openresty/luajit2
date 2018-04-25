@@ -6,6 +6,14 @@ LuaJIT is a Just-In-Time (JIT) compiler for the Lua programming language.
 Project Homepage: http://luajit.org/
 
 LuaJIT is Copyright (C) 2005-2017 Mike Pall.
+
+Additional patches for OpenResty are copyrighted by Yichun Zhang and OpenResty
+Inc.:
+
+Copyright (C) 2017-2018 Yichun Zhang. All rights reserved.
+
+Copyright (C) 2017-2018 OpenResty Inc. All rights reserved.
+
 LuaJIT is free software, released under the MIT license.
 See full Copyright Notice in the COPYRIGHT file or in luajit.h.
 
