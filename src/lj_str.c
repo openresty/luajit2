@@ -11,6 +11,7 @@
 #include "lj_err.h"
 #include "lj_str.h"
 #include "lj_char.h"
+#include "lj_dispatch.h" /* for G2J */
 
 /* -- String helpers ------------------------------------------------------ */
 
@@ -165,12 +166,6 @@ lj_str_indep_hash(GCstr *str) {
 
 #include "x64/src/lj_str_hash_x64.h"
 
-#if defined(LJ_ARCH_STR_HASH)
-#define LJ_STR_HASH LJ_ARCH_STR_HASH
-#else
-#define LJ_STR_HASH lj_str_original_hash
-#endif
-
 /* Intern a string and return string object. */
 GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
 {
@@ -187,7 +182,15 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
     return &g->strempty;
   }
 
-  h = LJ_STR_HASH(str, lenx);
+  /* switch between sse and non-sse hash branches */
+  if ((G2J(g)->flags & JIT_F_SSE4_2))
+  {
+    h = lj_str_sse_hash(str, lenx);
+  }
+  else
+  {
+    h = lj_str_original_hash(str, lenx);
+  }
 
   /* Check if the string has already been interned. */
   o = gcref(g->strhash[h & g->strmask]);

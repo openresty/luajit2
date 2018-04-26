@@ -8,13 +8,12 @@
 #ifndef _LJ_STR_HASH_X64_H_
 #define _LJ_STR_HASH_X64_H_
 
-#if defined(__SSE4_2__) && defined(__x86_64) && defined(__GNUC__)
+#if defined(__x86_64) && defined(__GNUC__)
 
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
-#include <smmintrin.h>
 
 #include "../../lj_def.h"
 
@@ -25,6 +24,24 @@
 #define random()  ((long) rand())
 #define srandom(seed)  srand(seed)
 #endif
+
+inline __attribute__((always_inline)) uint64_t asm_crc32_u64(uint64_t crc, uint64_t value) {
+//  printf("CRC!");
+  asm("crc32q %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
+
+inline __attribute__((always_inline)) uint32_t asm_crc32_u32(uint32_t crc, uint32_t value) {
+//  printf("CRC!");
+  asm("crc32l %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
+
+inline __attribute__((always_inline)) uint32_t asm_crc32_u8(uint32_t crc, uint8_t value) {
+//  printf("CRC!");
+  asm("crc32b %[value], %[crc]\n" : [crc] "+r" (crc) : [value] "rm" (value));
+  return crc;
+}
 
 static const uint64_t* cast_uint64p(const char* str)
 {
@@ -48,7 +65,7 @@ static LJ_AINLINE uint32_t lj_str_hash_1_4(const char* str, uint32_t len)
   v = (v << 8) | str[len >> 1];
   v = (v << 8) | str[len - 1];
   v = (v << 8) | len;
-  return _mm_crc32_u32(0, v);
+  return asm_crc32_u32(0, v);
 #else
   uint32_t a, b, h = len;
 
@@ -78,9 +95,9 @@ static LJ_AINLINE uint32_t lj_str_hash_4_16(const char* str, uint32_t len)
     v2 = *cast_uint32p(str + len - 4);
   }
 
-  h = _mm_crc32_u32(0, len);
-  h = _mm_crc32_u64(h, v1);
-  h = _mm_crc32_u64(h, v2);
+  h = asm_crc32_u32(0, len);
+  h = asm_crc32_u64(h, v1);
+  h = asm_crc32_u64(h, v2);
   return h;
 }
 
@@ -90,18 +107,18 @@ static uint32_t lj_str_hash_16_128(const char* str, uint32_t len)
   uint64_t h1, h2;
   uint32_t i;
 
-  h1 = _mm_crc32_u32(0, len);
+  h1 = asm_crc32_u32(0, len);
   h2 = 0;
 
   for (i = 0; i < len - 16; i += 16) {
-    h1 += _mm_crc32_u64(h1, *cast_uint64p(str + i));
-    h2 += _mm_crc32_u64(h2, *cast_uint64p(str + i + 8));
+    h1 += asm_crc32_u64(h1, *cast_uint64p(str + i));
+    h2 += asm_crc32_u64(h2, *cast_uint64p(str + i + 8));
   };
 
-  h1 = _mm_crc32_u64(h1, *cast_uint64p(str + len - 16));
-  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+  h1 = asm_crc32_u64(h1, *cast_uint64p(str + len - 16));
+  h2 = asm_crc32_u64(h2, *cast_uint64p(str + len - 8));
 
-  return _mm_crc32_u32(h1, h2);
+  return asm_crc32_u32(h1, h2);
 }
 
 /* **************************************************************************
@@ -144,7 +161,7 @@ static LJ_AINLINE uint32_t log2_floor(uint32_t n)
 /* This function is to populate `random_pos` such that random_pos[i][*]
  * contains random value in the range of [2**i, 2**(i+1)).
  */
-static void x64_init_random(void)
+void x64_init_random(void)
 {
   int i, seed, rml;
 
@@ -155,8 +172,8 @@ static void x64_init_random(void)
   }
 
   /* Init seed */
-  seed = _mm_crc32_u32(0, getpid());
-  seed = _mm_crc32_u32(seed, time(NULL));
+  seed = asm_crc32_u32(0, getpid());
+  seed = asm_crc32_u32(seed, time(NULL));
   srandom(seed);
 
   /* Now start to populate the random_pos[][]. */
@@ -185,11 +202,6 @@ static void x64_init_random(void)
 }
 #undef POW2_MASK
 
-void __attribute__((constructor)) x64_init_random_constructor()
-{
-    x64_init_random();
-}
-
 /* Return a pre-computed random number in the range of [1**chunk_sz_order,
  * 1**(chunk_sz_order+1)). It is "unsafe" in the sense that the return value
  * may be greater than chunk-size; it is up to the caller to make sure
@@ -216,7 +228,7 @@ static LJ_NOINLINE uint32_t lj_str_hash_128_above(const char* str,
   pos1 = get_random_pos_unsafe(chunk_sz_log2, 0);
   pos2 = get_random_pos_unsafe(chunk_sz_log2, 1);
 
-  h1 = _mm_crc32_u32(0, len);
+  h1 = asm_crc32_u32(0, len);
   h2 = 0;
 
   /* loop over 14 chunks, 2 chunks at a time */
@@ -224,29 +236,29 @@ static LJ_NOINLINE uint32_t lj_str_hash_128_above(const char* str,
        chunk_ptr += chunk_sz, i++) {
 
     v = *cast_uint64p(chunk_ptr + pos1);
-    h1 = _mm_crc32_u64(h1, v);
+    h1 = asm_crc32_u64(h1, v);
 
     v = *cast_uint64p(chunk_ptr + chunk_sz + pos2);
-    h2 = _mm_crc32_u64(h2, v);
+    h2 = asm_crc32_u64(h2, v);
   }
 
   /* the last two chunks */
   v = *cast_uint64p(chunk_ptr + pos1);
-  h1 = _mm_crc32_u64(h1, v);
+  h1 = asm_crc32_u64(h1, v);
 
   v = *cast_uint64p(chunk_ptr + chunk_sz - 8 - pos2);
-  h2 = _mm_crc32_u64(h2, v);
+  h2 = asm_crc32_u64(h2, v);
 
   /* process the trailing part */
-  h1 = _mm_crc32_u64(h1, *cast_uint64p(str));
-  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+  h1 = asm_crc32_u64(h1, *cast_uint64p(str));
+  h2 = asm_crc32_u64(h2, *cast_uint64p(str + len - 8));
 
-  h1 = _mm_crc32_u32(h1, h2);
+  h1 = asm_crc32_u32(h1, h2);
   return h1;
 }
 
 /* NOTE: the "len" should not be zero */
-static LJ_AINLINE uint32_t lj_str_hash(const char* str, size_t len)
+static LJ_AINLINE uint32_t lj_str_sse_hash(const char* str, size_t len)
 {
   if (len < 128) {
     if (len >= 16) { /* [16, 128) */
@@ -264,8 +276,5 @@ static LJ_AINLINE uint32_t lj_str_hash(const char* str, size_t len)
   return lj_str_hash_128_above(str, len);
 }
 
-#define LJ_ARCH_STR_HASH lj_str_hash
-#else
-#undef LJ_ARCH_STR_HASH
 #endif
 #endif /*_LJ_STR_HASH_X64_H_*/
