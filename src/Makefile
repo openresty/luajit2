@@ -50,7 +50,7 @@ CCOPT= -O2 -fomit-frame-pointer
 CCOPT_x86= -march=i686 -msse -msse2 -mfpmath=sse
 CCOPT_x64=
 CCOPT_arm=
-CCOPT_arm64=
+CCOPT_arm64= -march=armv8-a+crc
 CCOPT_ppc=
 CCOPT_mips=
 #
