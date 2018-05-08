@@ -183,6 +183,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   }
 
   /* switch between sse and non-sse hash branches */
+#if defined(__SSE4_2__) 
   if ((G2J(g)->flags & JIT_F_SSE4_2))
   {
     h = lj_str_sse_hash(str, lenx);
@@ -191,6 +192,9 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   {
     h = lj_str_original_hash(str, lenx);
   }
+#else
+  h = lj_str_original_hash(str, lenx);
+#endif
 
   /* Check if the string has already been interned. */
   o = gcref(g->strhash[h & g->strmask]);

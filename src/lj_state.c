@@ -293,10 +293,12 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud)
   /* and init random table if we have SSE4.2 support */
   uint32_t flags = _cpudetect(L);
 
+#if defined(__SSE4_2__) 
   if (flags & JIT_F_SSE4_2)
   {
     x64_init_random();
   }
+#endif
 
   global_State *g = &GG->g;
 

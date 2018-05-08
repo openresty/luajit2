@@ -37,6 +37,8 @@ CC= $(DEFAULT_CC)
 # unwinding are not affected -- the assembler part has frame unwind
 # information and GCC emits it where needed (x64) or with -g (see CCDEBUG).
 CCOPT= -O2 -fomit-frame-pointer
+# only apply SSE4.2 to target or else host minilua will fail on non-sse4.2 hardware
+# TARGET_CFLAGS=-msse4.2
 # Use this if you want to generate a smaller binary (but it's slower):
 #CCOPT= -Os -fomit-frame-pointer
 # Note: it's no longer recommended to use -O3 with GCC 4.x.
