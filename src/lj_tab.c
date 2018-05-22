@@ -14,6 +14,8 @@
 #include "lj_err.h"
 #include "lj_tab.h"
 
+#include <math.h>
+
 /* -- Object hashing ------------------------------------------------------ */
 
 /* Hash values are masked with the table hash mask and used as an index. */
@@ -692,6 +694,30 @@ GCtab * LJ_FASTCALL lj_tab_clone(lua_State *L, const GCtab *src)
   return lj_tab_dup(L, src);
 }
 
+int LJ_FASTCALL lj_tab_isarray(const GCtab *src)
+{
+  Node *node;
+  cTValue *o;
+  ptrdiff_t i;
+
+  node = noderef(src->node);
+  for (i = (ptrdiff_t)src->hmask; i >= 0; i--)
+    if (!tvisnil(&node[i].val)) {
+      o = &node[i].key;
+      if (LJ_UNLIKELY(tvisint(o))) {
+        continue;
+      }
+      if (LJ_UNLIKELY(tvisnum(o))) {
+        lua_Number n = numberVnum(o);
+        if (LJ_LIKELY(rint((double) n) == n)) {
+          continue;
+        }
+      }
+      return 0;
+    }
+
+  return 1;
+}
 
 int LJ_FASTCALL lj_tab_isempty(const GCtab *t)
 {
