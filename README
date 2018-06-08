@@ -31,6 +31,34 @@ since we still synchronize any upstream changes all the time.
 We introduce our own changes which will never merge or haven't yet merged into
 the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 
+feature: implemented the new Lua and C API functions for thread exdata.
+
+    The Lua API can be used like below:
+
+      local exdata = require "thread.exdata"
+      exdata(0xdeadbeefLL)  -- set the exdata of the current Lua thread
+      local ptr = exdata()  -- fetch the exdata of the current Lua thread
+
+    The exdata value on the Lua land is represented as a cdata object of the
+    ctype "void*".
+
+    Right now the reading API, i.e., `exdata()` calls without any arguments,
+    can be JIT compiled.
+
+    Also exposed the following public C API functions for manipulating
+    exdata on the C land:
+
+      void lua_setexdata(lua_State *L, void *exdata);
+      void *lua_getexdata(lua_State *L);
+
+    The exdata pointer is initialized to NULL when the main thread is
+    created. Any child Lua threads created will inherit the parent's exdata
+    but still have their own exdata storage. So child Lua threads can always
+    override the inherited parent exdata pointer values.
+
+    This API is used internally by the OpenResty core so never ever mess
+    with it yourself in the context of OpenResty.
+
 * feature: luajit.h: defined the macro OPENRESTY_LUAJIT for our branch of
   LuaJIT.
 
