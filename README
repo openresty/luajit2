@@ -31,6 +31,9 @@ since we still synchronize any upstream changes all the time.
 We introduce our own changes which will never merge or haven't yet merged into
 the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 
+* feature: luajit.h: defined the macro OPENRESTY_LUAJIT for our branch of
+  LuaJIT.
+
 * feature: implemented the table.clone() builtin Lua API.
 
     This change only support shallow clone. e.g
