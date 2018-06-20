@@ -660,7 +660,11 @@ LJLIB_NOREG LJLIB_CF(thread_exdata) LJLIB_REC(.)
   GCcdata *cd;
 
   if (nargs == 0) {
-    CTState *cts = ctype_cts(L);
+    CTState *cts = ctype_ctsG(G(L));
+    if (cts == NULL)
+      lj_err_caller(L, LJ_ERR_FFI_NOTLOAD);
+    cts->L = L;  /* Save L for errors and allocations. */
+
     cd = lj_cdata_new(cts, CTID_P_VOID, CTSIZE_PTR);
     cdata_setptr(cdataptr(cd), CTSIZE_PTR, L->exdata);
     setcdataV(L, L->top++, cd);

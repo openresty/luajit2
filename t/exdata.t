@@ -197,3 +197,25 @@ get: 10
 --- err
 [TRACE --- test.lua:14 -- trace too short at test.lua:15]
 [TRACE   1 test.lua:21 loop]
+
+
+
+=== TEST 7: interpreted (no ffi initialized)
+--- lua
+jit.off()
+local assert = assert
+local exdata = require "thread.exdata"
+local saved_q
+for i = 1, 5 do
+    local q = exdata()
+    if saved_q then
+        assert(q == saved_q)
+    end
+    saved_q = q
+end
+print(tostring(saved_q))
+--- jv
+--- out
+--- err
+ffi module not loaded (yet)
+--- exit: 1
