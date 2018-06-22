@@ -719,6 +719,32 @@ int LJ_FASTCALL lj_tab_isarray(const GCtab *src)
   return 1;
 }
 
+MSize LJ_FASTCALL lj_tab_nkeys(const GCtab *t)
+{
+  MSize narr = (MSize)t->asize;
+  cTValue *e;
+  Node *node;
+  MSize i, cnt = 0;
+
+  e = tvref(t->array);
+  for (i = 0; i < narr; i++)
+    if (LJ_LIKELY(!tvisnil(&e[i])))
+      cnt++;
+
+  if (t->hmask <= 0)
+    return cnt;
+
+  node = noderef(t->node);
+  for (i = 0; i <= (MSize)t->hmask; i++) {
+    Node *n = &node[i];
+    if (LJ_LIKELY(!tvisnil(&n->val))) {
+      cnt++;
+    }
+  }
+
+  return cnt;
+}
+
 int LJ_FASTCALL lj_tab_isempty(const GCtab *t)
 {
   MSize narr = (MSize)t->asize;
