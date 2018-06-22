@@ -1113,6 +1113,14 @@ static void LJ_FASTCALL recff_table_clone(jit_State *J, RecordFFData *rd)
   UNUSED(rd);
 }
 
+static void LJ_FASTCALL recff_table_nkeys(jit_State *J, RecordFFData *rd)
+{
+  TRef src = J->base[0];
+  if (LJ_LIKELY(tref_istab(src))) {
+    J->base[0] = lj_ir_call(J, IRCALL_lj_tab_nkeys, src);
+  }  /* else: Interpreter will throw. */
+}
+
 /* -- thread library fast functions ------------------------------------------ */
 
 void LJ_FASTCALL recff_thread_exdata(jit_State *J, RecordFFData *rd)

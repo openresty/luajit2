@@ -691,3 +691,29 @@ GCtab * LJ_FASTCALL lj_tab_clone(lua_State *L, const GCtab *src)
 {
   return lj_tab_dup(L, src);
 }
+
+MSize LJ_FASTCALL lj_tab_nkeys(const GCtab *t)
+{
+  MSize narr = (MSize)t->asize;
+  cTValue *e;
+  Node *node;
+  MSize i, cnt = 0;
+
+  e = tvref(t->array);
+  for (i = 0; i < narr; i++)
+    if (LJ_LIKELY(!tvisnil(&e[i])))
+      cnt++;
+
+  if (t->hmask <= 0)
+    return cnt;
+
+  node = noderef(t->node);
+  for (i = 0; i <= (MSize)t->hmask; i++) {
+    Node *n = &node[i];
+    if (LJ_LIKELY(!tvisnil(&n->val))) {
+      cnt++;
+    }
+  }
+
+  return cnt;
+}
