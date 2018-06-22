@@ -694,13 +694,11 @@ GCtab * LJ_FASTCALL lj_tab_clone(lua_State *L, const GCtab *src)
   return lj_tab_dup(L, src);
 }
 
-int LJ_FASTCALL lj_tab_isarray(lua_State *L, const GCtab *src)
+int LJ_FASTCALL lj_tab_isarray(const GCtab *src)
 {
   Node *node;
   cTValue *o;
   ptrdiff_t i;
-
-  UNUSED(L);
 
   node = noderef(src->node);
   for (i = (ptrdiff_t)src->hmask; i >= 0; i--)

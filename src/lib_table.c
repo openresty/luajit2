@@ -184,7 +184,7 @@ LJLIB_NOREG LJLIB_CF(table_isarray) LJLIB_REC(.)
 {
   GCtab *src = lj_lib_checktab(L, 1);
 
-  setboolV(L->base, lj_tab_isarray(L, src));
+  setboolV(L->base, lj_tab_isarray(src));
   L->top = L->base+1;
 
   return 1;
