@@ -874,20 +874,6 @@ int LJ_FASTCALL lj_trace_exit(jit_State *J, void *exptr)
   pc = exd.pc;
   cf = cframe_raw(L->cframe);
   setcframe_pc(cf, pc);
-
-#ifdef LUA_USE_ASSERT
-  /*
-  ** DEBUGGING: Check GC objects in current stack.
-  ** NOTE: THIS IS EXPENSIVE -- DON'T LEAVE PERMANENTLY ENABLED!
-  */
-  {
-    TValue *o, *top = L->top;
-    for (o = tvref(L->stack)+1; o < top; o++) {
-      tvchecklive(L, o);
-    }
-  }
-#endif
-
   if (LJ_HASPROFILE && (G(L)->hookmask & HOOK_PROFILE)) {
     /* Just exit to interpreter. */
   } else if (G(L)->gc.state == GCSatomic || G(L)->gc.state == GCSfinalize) {

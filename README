@@ -99,9 +99,6 @@ the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 * Makefile: make sure we always install the symlink for "luajit" even for
   alpha or beta versions.
 
-* debugging: added an (expensive) assertion to check GC objects in current
-  stack upon trace exiting. thanks Mike Pall.
-
 * feature: jit.dump: output Lua source location after every BC.
 
 * feature: added internal memory-buffer-based trace entry/exit/start-recording
