@@ -219,3 +219,53 @@ print(tostring(saved_q))
 --- err
 ffi module not loaded (yet)
 --- exit: 1
+
+
+
+=== TEST 8: default value (interpreted)
+--- lua
+jit.off()
+local assert = assert
+require "ffi"
+local exdata = require "thread.exdata"
+local saved_q
+for i = 1, 5 do
+    local q = exdata()
+    if saved_q then
+        assert(q == saved_q)
+    end
+    saved_q = q
+end
+print(saved_q == nil)
+print(tostring(saved_q))
+--- jv
+--- out
+true
+cdata<void *>: NULL
+--- err
+
+
+
+=== TEST 9: default value (JIT)
+--- lua
+jit.opt.start("minstitch=100000", "hotloop=2")
+jit.on()
+local assert = assert
+require "ffi"
+local exdata = require "thread.exdata"
+local saved_q
+for i = 1, 5 do
+    local q = exdata()
+    if saved_q then
+        assert(q == saved_q)
+    end
+    saved_q = q
+end
+print(saved_q == nil)
+print(tostring(saved_q))
+--- jv
+--- out
+true
+cdata<void *>: NULL
+--- err
+[TRACE   1 test.lua:7 loop]
