@@ -31,7 +31,7 @@ since we still synchronize any upstream changes all the time.
 We introduce our own changes which will never merge or haven't yet merged into
 the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 
-feature: implemented the new Lua and C API functions for thread exdata.
+* feature: implemented the new Lua and C API functions for thread exdata.
 
     The Lua API can be used like below:
 
