@@ -1113,6 +1113,19 @@ static void LJ_FASTCALL recff_table_clone(jit_State *J, RecordFFData *rd)
   UNUSED(rd);
 }
 
+static void LJ_FASTCALL recff_table_isempty(jit_State *J, RecordFFData *rd)
+{
+  TRef src = J->base[0];
+  if (LJ_LIKELY(tref_istab(src))) {
+    TRef trres = lj_ir_call(J, IRCALL_lj_tab_isempty, src);
+    GCtab *t = tabV(&rd->argv[0]);
+    int isempty = lj_tab_isempty(t);
+    TRef tr0 = lj_ir_kint(J, 0);
+    emitir(isempty ? IRTGI(IR_NE) : IRTGI(IR_EQ), trres, tr0);
+    J->base[0] = isempty ? TREF_TRUE : TREF_FALSE;
+  }  /* else: Interpreter will throw. */
+}
+
 /* -- thread library fast functions ------------------------------------------ */
 
 void LJ_FASTCALL recff_thread_exdata(jit_State *J, RecordFFData *rd)
