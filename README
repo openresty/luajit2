@@ -33,6 +33,24 @@ the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 
 * feature: implemented the new Lua and C API functions for thread exdata.
 
+* feature: implemented the table.isempty() Lua API.
+
+    This Lua API can be JIT compiled.
+
+    Returns true when the table contains non-nil array elements or non-nil
+    key-value pairs.
+
+    Usage:
+
+    ```lua
+        local isempty = require "table.isempty"
+        print(isempty({}))  -- true
+        print(isempty({nil, dog = nil}))  -- true
+        print(isempty({"a", "b"}))  -- false
+        print(isempty({nil, 3}))  -- false
+        print(isempty({cat = 3}))  -- false
+    ```
+
     The Lua API can be used like below:
 
       local exdata = require "thread.exdata"
