@@ -31,6 +31,23 @@ since we still synchronize any upstream changes all the time.
 We introduce our own changes which will never merge or haven't yet merged into
 the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 
+* feature: implemented the new table.nkeys Lua API.
+
+    This Lua builtin returns the number of elements in a Lua table, i.e.,
+    the number of non-nil array elements plus the number of non-nil key-value
+    pairs in a single Lua table.
+
+    It can be used like this:
+
+      local nkeys = require "table.nkeys"
+
+      print(nkeys({}))  -- 0
+      print(nkeys({ "a", nil, "b" }))  -- 2
+      print(nkeys({ dog = 3, cat = 4, bird = nil }))  -- 2
+      print(nkeys({ "a", dog = 3, cat = 4 }))  -- 3
+
+    This Lua API can be JIT compiled.
+
 feature: implemented the new Lua and C API functions for thread exdata.
 
     The Lua API can be used like below:
