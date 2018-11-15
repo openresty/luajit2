@@ -31,6 +31,18 @@ since we still synchronize any upstream changes all the time.
 We introduce our own changes which will never merge or haven't yet merged into
 the upstream LuaJIT (https://github.com/LuaJIT/LuaJIT), which are
 
+* feature: implemented the new table.isarray() builtin function which returns true
+  for purely array-like Lua tables and false otherwise.
+
+    Empty Lua tables are treated as arrays.
+
+    Use it like this:
+
+        isarr = require "table.isarray"
+        print(isarr{"a", true, 3.14})  -- true
+        print(isarr{"dog" = 3})  -- false
+        print(isarr{})  -- true
+
 feature: implemented the new Lua and C API functions for thread exdata.
 
     The Lua API can be used like below:
