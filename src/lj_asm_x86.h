@@ -1273,7 +1273,7 @@ static void asm_hrefk(ASMState *as, IRIns *ir)
   int32_t ofs = (int32_t)(kslot->op2 * sizeof(Node));
   Reg dest = ra_used(ir) ? ra_dest(as, ir, RSET_GPR) : RID_NONE;
   Reg node = ra_alloc1(as, ir->op1, RSET_GPR);
-#if !LJ_64 || defined(LUAJIT_USE_VALGRIND)
+#if !LJ_64 || (defined(LUAJIT_USE_VALGRIND) && !LJ_GC64)
   MCLabel l_exit;
 #endif
   lua_assert(ofs % sizeof(Node) == 0);
@@ -1288,7 +1288,7 @@ static void asm_hrefk(ASMState *as, IRIns *ir)
     }
   }
   asm_guardcc(as, CC_NE);
-#if LJ_64 && !defined(LUAJIT_USE_VALGRIND)
+#if LJ_64 && (!defined(LUAJIT_USE_VALGRIND) || LJ_GC64)
   if (!irt_ispri(irkey->t)) {
     Reg key = ra_scratch(as, rset_exclude(RSET_GPR, node));
     emit_rmro(as, XO_CMP, key|REX_64, node,
