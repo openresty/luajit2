@@ -166,7 +166,7 @@ typedef struct MCLink {
 
 /* Stack snapshot header. */
 typedef struct SnapShot {
-  uint16_t mapofs;	/* Offset into snapshot map. */
+  uint32_t mapofs;	/* Offset into snapshot map. */
   IRRef1 ref;		/* First IR ref for this snapshot. */
   uint8_t nslots;	/* Number of valid slots. */
   uint8_t topslot;	/* Maximum frame extent. */
@@ -237,21 +237,25 @@ typedef struct GCtrace {
   uint8_t linktype;	/* Type of link. */
   IRRef nins;		/* Next IR instruction. Biased with REF_BIAS. */
 #if LJ_GC64
-  uint32_t unused_gc64;
+  uint32_t nsnapmap;	/* Number of snapshot map elements. */
 #endif
   GCRef gclist;
   IRIns *ir;		/* IR instructions/constants. Biased with REF_BIAS. */
   IRRef nk;		/* Lowest IR constant. Biased with REF_BIAS. */
   uint16_t nsnap;	/* Number of snapshots. */
-  uint16_t nsnapmap;	/* Number of snapshot map elements. */
+  uint8_t sinktags;	/* Trace has SINK tags. */
+  uint8_t unused1;
+#if !LJ_GC64
+  uint32_t nsnapmap;	/* Number of snapshot map elements. */
+#endif
+  GCRef startpt;	/* Starting prototype. */
   SnapShot *snap;	/* Snapshot array. */
   SnapEntry *snapmap;	/* Snapshot map. */
-  GCRef startpt;	/* Starting prototype. */
   MRef startpc;		/* Bytecode PC of starting instruction. */
   BCIns startins;	/* Original bytecode of starting instruction. */
   MSize szmcode;	/* Size of machine code. */
-  MCode *mcode;		/* Start of machine code. */
   MSize mcloop;		/* Offset of loop start in machine code. */
+  MCode *mcode;		/* Start of machine code. */
   uint16_t nchild;	/* Number of child traces (root trace only). */
   uint16_t spadjust;	/* Stack pointer adjustment (offset in bytes). */
   TraceNo1 traceno;	/* Trace number. */
@@ -259,8 +263,6 @@ typedef struct GCtrace {
   TraceNo1 root;	/* Root trace of side trace (or 0 for root traces). */
   TraceNo1 nextroot;	/* Next root trace for same prototype. */
   TraceNo1 nextside;	/* Next side trace of same root trace. */
-  uint8_t sinktags;	/* Trace has SINK tags. */
-  uint8_t unused1;
 #ifdef LUAJIT_USE_GDBJIT
   void *gdbjit_entry;	/* GDB JIT entry. */
 #endif
