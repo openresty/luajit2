@@ -107,6 +107,11 @@ static BCPos debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
   return pos;
 }
 
+LJ_FUNC BCPos lj_debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe)
+{
+  return debug_framepc(L, fn, nextframe);
+}
+
 /* -- Line numbers -------------------------------------------------------- */
 
 /* Get line number for a bytecode position. */
