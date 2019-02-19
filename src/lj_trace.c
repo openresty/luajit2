@@ -593,21 +593,22 @@ static int trace_abort(jit_State *J)
     J->cur.link = 0;
     J->cur.linktype = LJ_TRLINK_NONE;
     lj_vmevent_send(L, TRACE,
-      TValue *frame;
-      const BCIns *pc;
+      cTValue *frame;
+      int size;
+      BCIns pc;
       GCfunc *fn;
       setstrV(L, L->top++, lj_str_newlit(L, "abort"));
       setintV(L->top++, traceno);
-      /* Find original Lua function call to generate a better error message. */
-      frame = J->L->base-1;
-      pc = J->pc;
-      while (!isluafunc(frame_func(frame))) {
-	pc = (frame_iscont(frame) ? frame_contpc(frame) : frame_pc(frame)) - 1;
-	frame = frame_prev(frame);
-      }
+      /* Find original function call to generate a better error message. */
+      frame = lj_debug_frame(L, 0, &size);
+      lua_assert(frame != NULL);
       fn = frame_func(frame);
+      if (frame == L->base-1 && isluafunc(fn))
+	pc = proto_bcpos(funcproto(fn), J->pc);
+      else
+	pc = lj_debug_framepc(L, fn, frame);
       setfuncV(L, L->top++, fn);
-      setintV(L->top++, proto_bcpos(funcproto(fn), pc));
+      setintV(L->top++, pc);
       copyTV(L, L->top++, restorestack(L, errobj));
       copyTV(L, L->top++, &J->errinfo);
     );

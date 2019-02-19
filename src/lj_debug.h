@@ -26,6 +26,7 @@ typedef struct lj_Debug {
   int isvararg;
 } lj_Debug;
 
+LJ_FUNC BCPos lj_debug_framepc(lua_State *L, GCfunc *fn, cTValue *nextframe);
 LJ_FUNC cTValue *lj_debug_frame(lua_State *L, int level, int *size);
 LJ_FUNC BCLine LJ_FASTCALL lj_debug_line(GCproto *pt, BCPos pc);
 LJ_FUNC const char *lj_debug_uvname(GCproto *pt, uint32_t idx);
