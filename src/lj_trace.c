@@ -594,7 +594,6 @@ static int trace_abort(jit_State *J)
     J->cur.linktype = LJ_TRLINK_NONE;
     lj_vmevent_send(L, TRACE,
       cTValue *frame;
-      cTValue *nextframe;
       int size;
       BCIns pc;
       GCfunc *fn;
@@ -603,12 +602,11 @@ static int trace_abort(jit_State *J)
       /* Find original function call to generate a better error message. */
       frame = lj_debug_frame(L, 0, &size);
       assert(frame != NULL);
-      nextframe = size ? frame + size : NULL;
       fn = frame_func(frame);
-      if (nextframe == L->base-1)
+      if (frame == L->base-1 && isluafunc(fn))
 	pc = proto_bcpos(funcproto(fn), J->pc);
       else
-	pc = lj_debug_framepc(L, fn, nextframe);
+	pc = lj_debug_framepc(L, fn, frame);
       setfuncV(L, L->top++, fn);
       setintV(L->top++, pc);
       copyTV(L, L->top++, restorestack(L, errobj));
