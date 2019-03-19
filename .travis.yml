@@ -38,7 +38,7 @@ env:
   - LUAJIT_XCFLAGS="-DLUAJIT_USE_GC64 -DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1
 
 install:
-  - git clone https://github.com/openresty/luajit2-test-suite.git ../luajit2-test-suite
+  - git clone -b tests/unsink-64-ptr https://github.com/thibaultcha/luajit2-test-suite.git ../luajit2-test-suite
 
 script:
   - valgrind --version
