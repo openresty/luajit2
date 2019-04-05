@@ -18,6 +18,7 @@ Table of Contents
     * [New JIT parameter defaults](#new-jit-parameter-defaults)
     * [String table hashing optimization](#string-table-hashing-optimization)
     * [New command-line option `-bL`](#new-command-line-option--bl)
+    * [More detailed LuaJIT bytecode textual listing](#more-detailed-luajit-bytecode-textual-listing)
     * [New macros](#new-macros)
     * [Miscellaneous](#miscellaneous)
 * [Copyright & License](#copyright--license)
@@ -197,6 +198,24 @@ below:
 
 The column `[N]` is the Lua source line number. For example, `[1]` means on
 the first source line.
+
+[Back to TOC](#table-of-contents)
+
+## More detailed LuaJIT bytecode textual listing
+
+The `-bl` option also prints out the constant tables of each Lua prototype.
+For example,
+
+```
+-- BYTECODE -- a.lua:0-48
+KGC    0    "print"
+KGC    1    "hi"
+KGC    2    table
+KGC    3    a.lua:17
+KN    1    1000000
+KN    2    1.390671161567e-309
+...
+```
 
 [Back to TOC](#table-of-contents)
 
