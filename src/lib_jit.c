@@ -141,6 +141,7 @@ LJLIB_CF(jit_attach)
   return 0;
 }
 
+#if LJ_HASJIT
 LJLIB_CF(jit_prngstate)
 {
   jit_State *J = L2J(L);
@@ -151,6 +152,7 @@ LJLIB_CF(jit_prngstate)
   setintV(L->top++, cur);
   return 1;
 }
+#endif
 
 LJLIB_PUSH(top-5) LJLIB_SET(os)
 LJLIB_PUSH(top-4) LJLIB_SET(arch)
@@ -749,6 +751,8 @@ static uint32_t jit_cpudetect(lua_State *L)
   }
 #endif
 #endif
+#elif LJ_TARGET_S390X
+  /* No optional CPU features to detect (for now). */
 #else
 #error "Missing CPU detection for this architecture"
 #endif
