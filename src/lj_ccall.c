@@ -1017,8 +1017,12 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
     CTypeID did;
     CType *d;
     CTSize sz;
-    MSize n, isfp = 0, isva = 0, onstack = 0;
+    MSize n, isfp = 0, isva = 0;
     void *dp, *rp = NULL;
+
+#if LJ_TARGET_S390X
+    MSize onstack = 0;
+#endif
 
     if (fid) {  /* Get argument type from field. */
       CType *ctf = ctype_get(cts, fid);
@@ -1057,7 +1061,9 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
     CCALL_HANDLE_REGARG  /* Handle register arguments. */
 
     /* Otherwise pass argument on stack. */
+#if LJ_TARGET_S390X
     onstack = 1;
+#endif
     if (CCALL_ALIGN_STACKARG && !rp && (d->info & CTF_ALIGN) > CTALIGN_PTR) {
       MSize align = (1u << ctype_align(d->info-CTALIGN_PTR)) -1;
       nsp = (nsp + align) & ~align;  /* Align argument on stack. */
