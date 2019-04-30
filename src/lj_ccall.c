@@ -1021,7 +1021,7 @@ static int ccall_set_args(lua_State *L, CTState *cts, CType *ct,
     void *dp, *rp = NULL;
 
 #if LJ_TARGET_S390X
-    MSize onstack = 0;
+    uint32_t onstack = 0;
 #endif
 
     if (fid) {  /* Get argument type from field. */
