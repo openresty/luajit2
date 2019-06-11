@@ -188,7 +188,11 @@ static void emit_asm_wordreloc(BuildCtx *ctx, uint8_t *p, int n,
 #else
 #define TOCPREFIX ""
 #endif
-  if ((ins >> 26) == 16) {
+  if ((ins >> 26) == 14) {
+    fprintf(ctx->fp, "\taddi %d,%d,%s\n", (ins >> 21) & 31, (ins >> 16) & 31, sym);
+  } else if ((ins >> 26) == 15) {
+    fprintf(ctx->fp, "\taddis %d,%d,%s\n", (ins >> 21) & 31, (ins >> 16) & 31, sym);
+  } else if ((ins >> 26) == 16) {
     fprintf(ctx->fp, "\t%s %d, %d, " TOCPREFIX "%s\n",
 	    (ins & 1) ? "bcl" : "bc", (ins >> 21) & 31, (ins >> 16) & 31, sym);
   } else if ((ins >> 26) == 18) {
@@ -290,6 +294,9 @@ void emit_asm(BuildCtx *ctx)
   int i, rel;
 
   fprintf(ctx->fp, "\t.file \"buildvm_%s.dasc\"\n", ctx->dasm_arch);
+#if LJ_ARCH_PPC_ELFV2
+  fprintf(ctx->fp, "\t.abiversion 2\n");
+#endif
   fprintf(ctx->fp, "\t.text\n");
   emit_asm_align(ctx, 4);
 
