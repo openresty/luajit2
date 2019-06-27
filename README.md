@@ -228,6 +228,7 @@ LuaJIT.
 
 ## Miscellaneous
 
+* increased the maximum number of allowed upvalues from 60 to 120.
 * various important fixes for bugs in the JIT compiler and the VM which have not
 been merged in upstream LuaJIT.
 * removed the GCC 4 requirement for x86 for older systems like
