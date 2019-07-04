@@ -98,7 +98,9 @@ This Lua API can be JIT compiled.
 
 ### thread.exdata
 
-We implemented the new Lua and C API functions for thread exdata.
+We implemented the new Lua and C API functions for thread exdata to allow users
+to embed user data into a thread. This feature needs LuaJIT FFI and hence is
+not available when built with `-DLUAJIT_DISABLE_FFI`.
 
 The Lua API can be used like below:
 

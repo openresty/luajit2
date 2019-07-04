@@ -1149,6 +1149,7 @@ static void LJ_FASTCALL recff_table_isempty(jit_State *J, RecordFFData *rd)
 
 /* -- thread library fast functions ------------------------------------------ */
 
+#if LJ_HASFFI
 void LJ_FASTCALL recff_thread_exdata(jit_State *J, RecordFFData *rd)
 {
   TRef tr = J->base[0];
@@ -1161,6 +1162,7 @@ void LJ_FASTCALL recff_thread_exdata(jit_State *J, RecordFFData *rd)
   }
   recff_nyiu(J, rd);  /* this case is too rare to be interesting */
 }
+#endif
 
 /* -- I/O library fast functions ------------------------------------------ */
 
