@@ -39,8 +39,8 @@ We added the `table.isempty()` builtin Lua API.
 
 This Lua API can be JIT compiled.
 
-Returns true when the table contains non-nil array elements or non-nil
-key-value pairs.
+Returns true when the table contains neither non-nil array elements nor
+non-nil key-value pairs.
 
 Usage:
 
