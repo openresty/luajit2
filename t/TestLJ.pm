@@ -61,11 +61,18 @@ sub run_test ($) {
 
     is $exp_rc, $rc >> 8, "$name - exit code okay";
 
-    if (defined $block->err) {
+    my $exp_err = $block->err;
+    if (defined $exp_err) {
         if ($err =~ /.*:.*:.*: (.*\s)?/) {
             $err = $1;
         }
-        is $err, $block->err, "$name - err expected";
+
+	if (ref $exp_err) {
+	  like $err, $exp_err, "$name - err like expected";
+
+	} else {
+	  is $err, $exp_err, "$name - err expected";
+	}
 
     } elsif (defined $err && $err ne '') {
         warn "$name - STDERR:\n$err";
