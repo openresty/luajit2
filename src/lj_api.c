@@ -25,6 +25,9 @@
 #include "lj_vm.h"
 #include "lj_strscan.h"
 #include "lj_strfmt.h"
+#include "lj_ctype.h"
+#include "lj_lib.h"
+#include "lj_cdata.h"
 
 /* -- Common helper functions --------------------------------------------- */
 
@@ -1298,4 +1301,20 @@ LUA_API void lua_setexdata(lua_State *L, void *exdata)
 LUA_API void *lua_getexdata(lua_State *L)
 {
   return L->exdata;
+}
+
+LUA_API void *luaL_checkcdataptr(lua_State *L, int idx)
+{
+  if (idx < 0) idx = lua_gettop(L) + idx + 1;
+
+  GCcdata *cd = lj_lib_checkcdata(L, idx);
+
+  if (cd->ctypeid != CTID_P_VOID &&
+      cd->ctypeid != CTID_P_CVOID &&
+      cd->ctypeid != CTID_P_CCHAR)
+  {
+    lj_err_argtype(L, idx, "cdata pointer");
+  }
+
+  return cdata_getptr(cdataptr(cd), CTSIZE_PTR);
 }
