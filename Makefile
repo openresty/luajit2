@@ -104,6 +104,10 @@ ifeq (Darwin,$(TARGET_SYS))
   LDCONFIG= :
 endif
 
+ifeq (OpenBSD,$(TARGET_SYS))
+  LDCONFIG= :
+endif
+
 ##############################################################################
 
 INSTALL_DEP= src/luajit
