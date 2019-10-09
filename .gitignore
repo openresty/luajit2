@@ -12,3 +12,7 @@
 *~
 tags
 *.swo
+test/*.txt
+test/*.o
+test/*.d
+test/ht_test

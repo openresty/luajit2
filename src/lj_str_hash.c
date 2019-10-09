@@ -1,8 +1,11 @@
 /*
- * This file defines string hash function using CRC32. It takes advantage of
- * Intel hardware support (crc32 instruction, SSE 4.2) to speedup the CRC32
- * computation. The hash functions try to compute CRC32 of length and up
- * to 128 bytes of given string.
+ * This file defines string hash function using CRC32.
+ * On Intel architectures, this implemantation takes advantage of hardware
+ * support (CRC32 instruction, SSE 4.2) to speedup the CRC32 computation.
+ * On ARM64 architectures, this implementation utilizes the ARMv8.1-A extension
+ * wich offers CRC32 instructions.
+ * The hash functions try to compute CRC32 of length and up to 128 bytes of
+ * the given string.
  */
 
 #define lj_str_hash_c
@@ -15,11 +18,32 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
-#include <smmintrin.h>
 #include "lj_vm.h"
+
+#if LUAJIT_TARGET == LUAJIT_ARCH_X64
+#include <smmintrin.h>
+
+#define lj_crc32_u32 	_mm_crc32_u32
+#define lj_crc32_u64 	_mm_crc32_u64
 
 #ifndef F_CPU_SSE4_2
 #define F_CPU_SSE4_2 	(1 << 20)
+#endif
+
+#elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
+#include <sys/auxv.h>
+#include <arm_acle.h>
+#include <errno.h>
+
+#define lj_crc32_u32 	__crc32cw
+#define lj_crc32_u64 	__crc32cd
+
+#ifndef HWCAP_CRC32
+#define HWCAP_CRC32 	(1 << 7)
+#endif
+
+#else
+#error "LJ_OR_STRHASHCRC32 not supported on this architecture"
 #endif
 
 #ifdef __MINGW32__
@@ -49,7 +73,7 @@ static LJ_NOINLINE uint32_t lj_str_hash_1_4(const char* str, uint32_t len)
   v = (v << 8) | str[len >> 1];
   v = (v << 8) | str[len - 1];
   v = (v << 8) | len;
-  return _mm_crc32_u32(0, v);
+  return lj_crc32_u32(0, v);
 #else
   uint32_t a, b, h = len;
 
@@ -79,9 +103,9 @@ static LJ_NOINLINE uint32_t lj_str_hash_4_16(const char* str, uint32_t len)
     v2 = *cast_uint32p(str + len - 4);
   }
 
-  h = _mm_crc32_u32(0, len);
-  h = _mm_crc32_u64(h, v1);
-  h = _mm_crc32_u64(h, v2);
+  h = lj_crc32_u32(0, len);
+  h = lj_crc32_u64(h, v1);
+  h = lj_crc32_u64(h, v2);
 
   return h;
 }
@@ -92,18 +116,18 @@ static LJ_NOINLINE uint32_t lj_str_hash_16_128(const char* str, uint32_t len)
   uint64_t h1, h2;
   uint32_t i;
 
-  h1 = _mm_crc32_u32(0, len);
+  h1 = lj_crc32_u32(0, len);
   h2 = 0;
 
   for (i = 0; i < len - 16; i += 16) {
-    h1 += _mm_crc32_u64(h1, *cast_uint64p(str + i));
-    h2 += _mm_crc32_u64(h2, *cast_uint64p(str + i + 8));
+    h1 += lj_crc32_u64(h1, *cast_uint64p(str + i));
+    h2 += lj_crc32_u64(h2, *cast_uint64p(str + i + 8));
   };
 
-  h1 = _mm_crc32_u64(h1, *cast_uint64p(str + len - 16));
-  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+  h1 = lj_crc32_u64(h1, *cast_uint64p(str + len - 16));
+  h2 = lj_crc32_u64(h2, *cast_uint64p(str + len - 8));
 
-  return _mm_crc32_u32(h1, h2);
+  return lj_crc32_u32(h1, h2);
 }
 
 /* **************************************************************************
@@ -167,7 +191,7 @@ static LJ_NOINLINE uint32_t lj_str_hash_128_above(const char* str,
   pos1 = get_random_pos_unsafe(chunk_sz_log2, 0);
   pos2 = get_random_pos_unsafe(chunk_sz_log2, 1);
 
-  h1 = _mm_crc32_u32(0, len);
+  h1 = lj_crc32_u32(0, len);
   h2 = 0;
 
   /* loop over 14 chunks, 2 chunks at a time */
@@ -175,24 +199,24 @@ static LJ_NOINLINE uint32_t lj_str_hash_128_above(const char* str,
        chunk_ptr += chunk_sz, i++) {
 
     v = *cast_uint64p(chunk_ptr + pos1);
-    h1 = _mm_crc32_u64(h1, v);
+    h1 = lj_crc32_u64(h1, v);
 
     v = *cast_uint64p(chunk_ptr + chunk_sz + pos2);
-    h2 = _mm_crc32_u64(h2, v);
+    h2 = lj_crc32_u64(h2, v);
   }
 
   /* the last two chunks */
   v = *cast_uint64p(chunk_ptr + pos1);
-  h1 = _mm_crc32_u64(h1, v);
+  h1 = lj_crc32_u64(h1, v);
 
   v = *cast_uint64p(chunk_ptr + chunk_sz - 8 - pos2);
-  h2 = _mm_crc32_u64(h2, v);
+  h2 = lj_crc32_u64(h2, v);
 
   /* process the trailing part */
-  h1 = _mm_crc32_u64(h1, *cast_uint64p(str));
-  h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
+  h1 = lj_crc32_u64(h1, *cast_uint64p(str));
+  h2 = lj_crc32_u64(h2, *cast_uint64p(str + len - 8));
 
-  h1 = _mm_crc32_u32(h1, h2);
+  h1 = lj_crc32_u32(h1, h2);
 
   return h1;
 }
@@ -233,8 +257,8 @@ static void lj_str_hash_init_random(void)
   }
 
   /* Init seed */
-  seed = _mm_crc32_u32(0, getpid());
-  seed = _mm_crc32_u32(seed, time(NULL));
+  seed = lj_crc32_u32(0, getpid());
+  seed = lj_crc32_u32(seed, time(NULL));
   srandom(seed);
 
   /* Now start to populate the random_pos[][]. */
@@ -266,9 +290,15 @@ static void lj_str_hash_init_random(void)
 
 LJ_FUNC unsigned char lj_check_crc32_support()
 {
+#if LUAJIT_TARGET == LUAJIT_ARCH_X64
   uint32_t features[4];
   if (lj_vm_cpuid(1, features))
     return (features[2] & F_CPU_SSE4_2) != 0;
+#elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
+  uint32_t hwcap = getauxval(AT_HWCAP);
+  if (hwcap != ENOENT)
+    return (hwcap & HWCAP_CRC32) != 0;
+#endif
   return 0;
 }
 

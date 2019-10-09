@@ -16,8 +16,19 @@ else
     VALGRIND :=
 endif
 
-CXXFLAGS := -O3 -MD -g -Wall -msse4.2 -I../..
-LDFLAGS := ../../libluajit.a -ldl -lm
+CXXFLAGS := -O3 -MD -g -Wall -I../src
+LDFLAGS := ../src/libluajit.a -ldl -lm
+
+TARGET_TESTARCH=$(shell $(CC) -E ../src/lj_arch.h -dM)
+ifneq (,$(findstring LJ_TARGET_X64 ,$(TARGET_TESTARCH)))
+  CXXFLAGS+= -msse4.2
+else
+ifneq (,$(findstring LJ_TARGET_ARM64 ,$(TARGET_TESTARCH)))
+  CXXFLAGS+= -march=armv8-a+crc
+else
+  $(error Unsupported target architecture)
+endif
+endif
 
 %.o: %.cxx
 	$(CXX) $(CXXFLAGS) -MD -c $<
@@ -28,7 +39,7 @@ test: $(TEST_PROGRAM)
 	./unit_test.sh
 
 	@echo "smoke test"
-	../../luajit test_str_comp.lua
+	../src/luajit test_str_comp.lua
 
 benchmark: $(BENCHMARK_PROGRAM)
 	# micro benchmark
