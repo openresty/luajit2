@@ -11,7 +11,7 @@ static bool
 smoke_test()
 {
   fprintf(stdout, "running smoke tests...\n");
-	char buf[1024];
+  char buf[1024];
   char c = getpid() % 'a';
 
   for (int i = 0; i < (int)sizeof(buf); i++) {
@@ -34,7 +34,7 @@ verify_log2()
   fprintf(stdout, "verify log2...\n");
   bool err = false;
   std::map<uint32_t, uint32_t> lm;
-  lm[0] =(uint32_t)-1;
+  lm[0] = (uint32_t) -1;
   lm[1] = 0;
   lm[2] = 1;
   for (int i = 2; i < 31; i++) {

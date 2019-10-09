@@ -18,7 +18,6 @@ ffi.cdef[[
     long random(void);
 ]]
 
-
 local function test_equal(len_min, len_max)
     -- source string is wrapped by 16-byte-junk both before and after the
     -- string

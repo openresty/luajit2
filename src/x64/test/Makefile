@@ -1,4 +1,4 @@
-.PHONY: default test benchmark
+.PHONY: default test benchmark clean
 
 default: test benchmark
 
@@ -33,7 +33,7 @@ benchmark: $(BENCHMARK_PROGRAM)
 	# micro benchmark
 	./$(BENCHMARK_PROGRAM)
 
-$(TEST_PROGRAM) : $(TEST_PROGRAM_OBJ)
+$(TEST_PROGRAM): $(TEST_PROGRAM_OBJ)
 	cat $(TEST_PROGRAM_OBJ:.o=.d) > dep1.txt
 	$(CXX) $+ $(CXXFLAGS) -lm -o $@
 
