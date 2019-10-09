@@ -5,39 +5,40 @@
  * to 128 bytes of given string.
  */
 
-#ifndef _LJ_STR_HASH_X64_H_
-#define _LJ_STR_HASH_X64_H_
+#define lj_str_hash_c
+#define LUA_CORE
 
-#if defined(__SSE4_2__) && defined(__x86_64) && defined(__GNUC__)
+#include "lj_str_hash.h"
 
-#include <stdint.h>
+#if LJ_OR_STRHASHCRC32
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
 #include <smmintrin.h>
+#include "lj_vm.h"
 
-#include "../../lj_def.h"
-
-#undef LJ_AINLINE
-#define LJ_AINLINE
-
-#ifdef __MINGW32__
-#define random()  ((long) rand())
-#define srandom(seed)  srand(seed)
+#ifndef F_CPU_SSE4_2
+#define F_CPU_SSE4_2 	(1 << 20)
 #endif
 
-static const uint64_t* cast_uint64p(const char* str)
+#ifdef __MINGW32__
+#define random() 	((long) rand())
+#define srandom(seed) 	srand(seed)
+#endif
+
+static LJ_AINLINE const uint64_t* cast_uint64p(const char* str)
 {
   return (const uint64_t*)(void*)str;
 }
 
-static const uint32_t* cast_uint32p(const char* str)
+static LJ_AINLINE const uint32_t* cast_uint32p(const char* str)
 {
   return (const uint32_t*)(void*)str;
 }
 
 /* hash string with len in [1, 4) */
-static LJ_AINLINE uint32_t lj_str_hash_1_4(const char* str, uint32_t len)
+static LJ_NOINLINE uint32_t lj_str_hash_1_4(const char* str, uint32_t len)
 {
 #if 0
   /* TODO: The if-1 part (i.e the original algorithm) is working better when
@@ -66,7 +67,7 @@ static LJ_AINLINE uint32_t lj_str_hash_1_4(const char* str, uint32_t len)
 }
 
 /* hash string with len in [4, 16) */
-static LJ_AINLINE uint32_t lj_str_hash_4_16(const char* str, uint32_t len)
+static LJ_NOINLINE uint32_t lj_str_hash_4_16(const char* str, uint32_t len)
 {
   uint64_t v1, v2, h;
 
@@ -81,11 +82,12 @@ static LJ_AINLINE uint32_t lj_str_hash_4_16(const char* str, uint32_t len)
   h = _mm_crc32_u32(0, len);
   h = _mm_crc32_u64(h, v1);
   h = _mm_crc32_u64(h, v2);
+
   return h;
 }
 
 /* hash string with length in [16, 128) */
-static uint32_t lj_str_hash_16_128(const char* str, uint32_t len)
+static LJ_NOINLINE uint32_t lj_str_hash_16_128(const char* str, uint32_t len)
 {
   uint64_t h1, h2;
   uint32_t i;
@@ -139,71 +141,20 @@ static LJ_AINLINE uint32_t log2_floor(uint32_t n)
   return 31;
 }
 
-#define POW2_MASK(n) ((1L << (n)) - 1)
-
-/* This function is to populate `random_pos` such that random_pos[i][*]
- * contains random value in the range of [2**i, 2**(i+1)).
- */
-static void x64_init_random(void)
-{
-  int i, seed, rml;
-
-  /* Calculate the ceil(log2(RAND_MAX)) */
-  rml = log2_floor(RAND_MAX);
-  if (RAND_MAX & (RAND_MAX - 1)) {
-    rml += 1;
-  }
-
-  /* Init seed */
-  seed = _mm_crc32_u32(0, getpid());
-  seed = _mm_crc32_u32(seed, time(NULL));
-  srandom(seed);
-
-  /* Now start to populate the random_pos[][]. */
-  for (i = 0; i < 3; i++) {
-    /* No need to provide random value for chunk smaller than 8 bytes */
-    random_pos[i][0] = random_pos[i][1] = 0;
-  }
-
-  for (; i < rml; i++) {
-    random_pos[i][0] = random() & POW2_MASK(i+1);
-    random_pos[i][1] = random() & POW2_MASK(i+1);
-  }
-
-  for (; i < 31; i++) {
-    int j;
-    for (j = 0; j < 2; j++) {
-      uint32_t v, scale;
-      scale = random_pos[i - rml][0];
-      if (scale == 0) {
-        scale = 1;
-      }
-      v = (random() * scale) & POW2_MASK(i+1);
-      random_pos[i][j] = v;
-    }
-  }
-}
-#undef POW2_MASK
-
-void __attribute__((constructor)) x64_init_random_constructor()
-{
-    x64_init_random();
-}
-
 /* Return a pre-computed random number in the range of [1**chunk_sz_order,
  * 1**(chunk_sz_order+1)). It is "unsafe" in the sense that the return value
  * may be greater than chunk-size; it is up to the caller to make sure
  * "chunk-base + return-value-of-this-func" has valid virtual address.
  */
 static LJ_AINLINE uint32_t get_random_pos_unsafe(uint32_t chunk_sz_order,
-                                                 uint32_t idx)
+				 uint32_t idx)
 {
   uint32_t pos = random_pos[chunk_sz_order][idx & 1];
   return pos;
 }
 
 static LJ_NOINLINE uint32_t lj_str_hash_128_above(const char* str,
-    uint32_t len)
+				 uint32_t len)
 {
   uint32_t chunk_num, chunk_sz, chunk_sz_log2, i, pos1, pos2;
   uint64_t h1, h2, v;
@@ -242,11 +193,12 @@ static LJ_NOINLINE uint32_t lj_str_hash_128_above(const char* str,
   h2 = _mm_crc32_u64(h2, *cast_uint64p(str + len - 8));
 
   h1 = _mm_crc32_u32(h1, h2);
+
   return h1;
 }
 
 /* NOTE: the "len" should not be zero */
-static LJ_AINLINE uint32_t lj_str_hash(const char* str, size_t len)
+static MSize lj_str_hash_crc32(const char *str, size_t len)
 {
   if (len < 128) {
     if (len >= 16) { /* [16, 128) */
@@ -260,12 +212,107 @@ static LJ_AINLINE uint32_t lj_str_hash(const char* str, size_t len)
     /* [0, 4) */
     return lj_str_hash_1_4(str, len);
   }
+
   /* [128, inf) */
   return lj_str_hash_128_above(str, len);
 }
 
-#define LJ_ARCH_STR_HASH lj_str_hash
-#else
-#undef LJ_ARCH_STR_HASH
+#define POW2_MASK(n) ((1L << (n)) - 1)
+
+/* This function is to populate `random_pos` such that random_pos[i][*]
+ * contains random value in the range of [2**i, 2**(i+1)).
+ */
+static void lj_str_hash_init_random(void)
+{
+  int i, seed, rml;
+
+  /* Calculate the ceil(log2(RAND_MAX)) */
+  rml = log2_floor(RAND_MAX);
+  if (RAND_MAX & (RAND_MAX - 1)) {
+    rml += 1;
+  }
+
+  /* Init seed */
+  seed = _mm_crc32_u32(0, getpid());
+  seed = _mm_crc32_u32(seed, time(NULL));
+  srandom(seed);
+
+  /* Now start to populate the random_pos[][]. */
+  for (i = 0; i < 3; i++) {
+    /* No need to provide random value for chunk smaller than 8 bytes */
+    random_pos[i][0] = random_pos[i][1] = 0;
+  }
+
+  for (; i < rml; i++) {
+    random_pos[i][0] = random() & POW2_MASK(i+1);
+    random_pos[i][1] = random() & POW2_MASK(i+1);
+  }
+
+  for (; i < 31; i++) {
+    int j;
+    for (j = 0; j < 2; j++) {
+      uint32_t v, scale;
+      scale = random_pos[i - rml][0];
+      if (scale == 0) {
+        scale = 1;
+      }
+      v = (random() * scale) & POW2_MASK(i+1);
+      random_pos[i][j] = v;
+    }
+  }
+}
+
+#undef POW2_MASK
+
+LJ_FUNC unsigned char lj_check_crc32_support()
+{
+  uint32_t features[4];
+  if (lj_vm_cpuid(1, features))
+    return (features[2] & F_CPU_SSE4_2) != 0;
+  return 0;
+}
+
+LJ_FUNC void lj_init_strhashfn(global_State *g)
+{
+  static StrHashFunction strhashfn;
+  if (strhashfn == NULL) {
+    if (lj_check_crc32_support()) {
+      lj_str_hash_init_random();
+      strhashfn = lj_str_hash_crc32;
+    } else {
+      strhashfn = lj_str_hash_orig;
+    }
+  }
+  g->strhashfn = strhashfn;
+}
+
 #endif
-#endif /*_LJ_STR_HASH_X64_H_*/
+
+LJ_FUNC MSize lj_str_hash_orig(const char *str, size_t lenx)
+{
+  MSize len = (MSize)lenx;
+  MSize a, b, h = len;
+
+  /* Compute string hash. Constants taken from lookup3 hash by Bob Jenkins. */
+  if (len >= 4) {  /* Caveat: unaligned access! */
+    a = lj_getu32(str);
+    h ^= lj_getu32(str+len-4);
+    b = lj_getu32(str+(len>>1)-2);
+    h ^= b; h -= lj_rol(b, 14);
+    b += lj_getu32(str+(len>>2)-1);
+  } else if (len > 0) {
+    a = *(const uint8_t *)str;
+    h ^= *(const uint8_t *)(str+len-1);
+    b = *(const uint8_t *)(str+(len>>1));
+    h ^= b; h -= lj_rol(b, 14);
+  } else {
+    return 0;
+  }
+
+  a ^= h; a -= lj_rol(h, 11);
+  b ^= a; b -= lj_rol(a, 25);
+  h ^= b; h -= lj_rol(b, 16);
+
+  return h;
+}
+

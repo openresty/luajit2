@@ -16,7 +16,8 @@ else
     VALGRIND :=
 endif
 
-CXXFLAGS := -O3 -MD -g -msse4.2 -Wall -I../src -I../../../src
+CXXFLAGS := -O3 -MD -g -Wall -msse4.2 -I../..
+LDFLAGS := ../../libluajit.a -ldl -lm
 
 %.o: %.cxx
 	$(CXX) $(CXXFLAGS) -MD -c $<
@@ -35,11 +36,11 @@ benchmark: $(BENCHMARK_PROGRAM)
 
 $(TEST_PROGRAM): $(TEST_PROGRAM_OBJ)
 	cat $(TEST_PROGRAM_OBJ:.o=.d) > dep1.txt
-	$(CXX) $+ $(CXXFLAGS) -lm -o $@
+	$(CXX) $+ $(LDFLAGS) -o $@
 
 $(BENCHMARK_PROGRAM): $(BENCHMARK_PROGRAM_OBJ)
 	cat $(BENCHMARK_PROGRAM_OBJ:.o=.d) > dep2.txt
-	$(CXX) $+ $(CXXFLAGS) -o $@
+	$(CXX) $+ $(LDFLAGS) -o $@
 
 -include dep1.txt
 -include dep2.txt

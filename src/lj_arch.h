@@ -615,4 +615,13 @@ extern void *LJ_WIN_LOADLIBA(const char *path);
 #define LJ_52			0
 #endif
 
+/* Optimized string hashing, added by OpenResty. */
+#if LUAJIT_TARGET == LUAJIT_ARCH_X64 && defined(__GNUC__) && defined(__SSE4_2__)
+#ifndef LJ_OR_DISABLE_STRHASHCRC32
+#define LJ_OR_STRHASHCRC32 	1
+#endif
+#else
+#define LJ_OR_STRHASHCRC32 	0
+#endif
+
 #endif

@@ -9,6 +9,7 @@
 #include <stdarg.h>
 
 #include "lj_obj.h"
+#include "lj_str_hash.h"
 
 /* String helpers. */
 LJ_FUNC int32_t LJ_FASTCALL lj_str_cmp(GCstr *a, GCstr *b);
@@ -23,7 +24,5 @@ LJ_FUNC void LJ_FASTCALL lj_str_free(global_State *g, GCstr *s);
 
 #define lj_str_newz(L, s)	(lj_str_new(L, s, strlen(s)))
 #define lj_str_newlit(L, s)	(lj_str_new(L, "" s, sizeof(s)-1))
-
-MSize lj_str_indep_hash(GCstr *str);
 
 #endif

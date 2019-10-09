@@ -1,15 +1,22 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <map>
 #include "test_util.hpp"
-#include "lj_str_hash_x64.h"
+
+extern "C" {
+#include "lj_str_hash.c"
+}
 
 using namespace std;
 
 static bool
 smoke_test()
 {
+  lj_str_hash_init_random();
+
   fprintf(stdout, "running smoke tests...\n");
   char buf[1024];
   char c = getpid() % 'a';
@@ -22,7 +29,7 @@ smoke_test()
                      255, 256, 257};
   for (unsigned i = 0; i < sizeof(lens)/sizeof(lens[0]); i++) {
     string s(buf, lens[i]);
-    test_printf("%d", lj_str_hash(s.c_str(), lens[i]));
+    test_printf("%d", lj_str_hash_crc32(s.c_str(), lens[i]));
   }
 
   return true;

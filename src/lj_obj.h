@@ -160,6 +160,11 @@ typedef struct SBuf {
   MRef L;		/* lua_State, used for buffer resizing. */
 } SBuf;
 
+#if LJ_OR_STRHASHCRC32
+/* String hashing functions, added by OpenResty. */
+typedef MSize (*StrHashFunction)(const char *, size_t);
+#endif
+
 /* -- Tags and values ----------------------------------------------------- */
 
 /* Frame link. */
@@ -622,6 +627,9 @@ typedef struct global_State {
   MRef saved_jit_base;  /* saved jit_base for lj_err_throw */
   MRef ctype_state;	/* Pointer to C type state. */
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
+#if LJ_OR_STRHASHCRC32
+  StrHashFunction strhashfn; /* String hashing function, added by OpenResty */
+#endif
 } global_State;
 
 #define mainthread(g)	(&gcref(g->mainthref)->th)

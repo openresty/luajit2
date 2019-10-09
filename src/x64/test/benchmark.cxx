@@ -1,14 +1,15 @@
 #include <sys/time.h> // for gettimeofday()
-extern "C" {
-#include "lj_str_hash_x64.h"
-}
 #include <string>
 #include <vector>
 #include <utility>
 #include <algorithm>
-#include "test_util.hpp"
 #include <stdio.h>
 #include <math.h>
+#include "test_util.hpp"
+
+extern "C" {
+#include "lj_str_hash.c"
+}
 
 using namespace std;
 
@@ -16,32 +17,6 @@ using namespace std;
 #define lj_ror(x, n) (((x)<<(-(int)(n)&(8*sizeof(x)-1))) | ((x)>>(n)))
 
 const char* separator = "-------------------------------------------";
-
-static uint32_t LJ_AINLINE
-lj_original_hash(const char *str, size_t len)
-{
-  uint32_t a, b, h = len;
-  if (len >= 4) {
-    a = lj_getu32(str); h ^= lj_getu32(str+len-4);
-    b = lj_getu32(str+(len>>1)-2);
-    h ^= b; h -= lj_rol(b, 14);
-    b += lj_getu32(str+(len>>2)-1);
-    a ^= h; a -= lj_rol(h, 11);
-    b ^= a; b -= lj_rol(a, 25);
-    h ^= b; h -= lj_rol(b, 16);
-  } else {
-    a = *(const uint8_t *)str;
-    h ^= *(const uint8_t *)(str+len-1);
-    b = *(const uint8_t *)(str+(len>>1));
-    h ^= b; h -= lj_rol(b, 14);
-  }
-
-  a ^= h; a -= lj_rol(h, 11);
-  b ^= a; b -= lj_rol(a, 25);
-  h ^= b; h -= lj_rol(b, 16);
-
-  return h;
-}
 
 template<class T> double
 BenchmarkHashTmpl(T func, char* buf, size_t len)
@@ -65,14 +40,14 @@ BenchmarkHashTmpl(T func, char* buf, size_t len)
 struct TestFuncWas
 {
   uint32_t operator()(const char* buf, uint32_t len) {
-    return lj_original_hash(buf, len);
+    return lj_str_hash_orig(buf, len);
   }
 };
 
 struct TestFuncIs
 {
   uint32_t operator()(const char* buf, uint32_t len) {
-    return lj_str_hash(buf, len);
+    return lj_str_hash_crc32(buf, len);
   }
 };
 
@@ -199,8 +174,8 @@ benchmarkConflictHelper(uint32_t bucketNum, const vector<string>& strs)
 
   for (vector<string>::const_iterator i = strs.begin(), e = strs.end();
        i != e; ++i) {
-    uint32_t h1 = lj_original_hash(i->c_str(), i->size());
-    uint32_t h2 = lj_str_hash(i->c_str(), i->size());
+    uint32_t h1 = lj_str_hash_orig(i->c_str(), i->size());
+    uint32_t h2 = lj_str_hash_crc32(i->c_str(), i->size());
 
     conflictWas[h1 & mask]++;
     conflictIs[h2 & mask]++;
