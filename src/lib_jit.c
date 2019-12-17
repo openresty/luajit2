@@ -159,11 +159,7 @@ LJLIB_CF(jit_prngstate)
 
 LJLIB_CF(jit_crc32)
 {
-#if LJ_OR_STRHASHCRC32
   setboolV(L->top++, lj_check_crc32_support());
-#else
-  setboolV(L->top++, 0);
-#endif
   return 1;
 }
 

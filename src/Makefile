@@ -521,6 +521,15 @@ ALL_GEN= $(LJVM_S) $(ALL_HDRGEN) $(LIB_VMDEFP)
 WIN_RM= *.obj *.lib *.exp *.dll *.exe *.manifest *.pdb *.ilk
 ALL_RM= $(ALL_T) $(ALL_GEN) *.o host/*.o $(WIN_RM)
 
+ifeq (x64,$(TARGET_LJARCH))
+  lj_str_hash-CFLAGS = -msse4.2
+endif
+ifeq (arm64,$(TARGET_LJARCH))
+  lj_str_hash-CFLAGS = -march=armv8-a+crc
+endif
+
+F_CFLAGS = $($(patsubst %.c,%-CFLAGS,$<))
+
 ##############################################################################
 # Build mode handling.
 ##############################################################################
@@ -685,8 +694,8 @@ lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
 
 %.o: %.c
 	$(E) "CC        $@"
-	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:.o=_dyn.o) $<
-	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
+	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) $(F_CFLAGS) -c -o $(@:.o=_dyn.o) $<
+	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) $(F_CFLAGS) -c -o $@ $<
 
 %.o: %.S
 	$(E) "ASM       $@"

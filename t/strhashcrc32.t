@@ -13,7 +13,9 @@ __DATA__
 --- lua
 jit.off()
 
-if jit.crc32() then
+if os.getenv("NO_STRHASHCRC32") == "1" then
+    assert(jit.strhashcrc32() == false, "strhashcrc32 should be disabled (LJ_OR_DISABLE_STRHASHCRC32)")
+elseif jit.crc32() then
     assert(jit.strhashcrc32() == true, "strhashcrc32 should be enabled")
 else
     assert(jit.strhashcrc32() == false, "strhashcrc32 should be disabled")

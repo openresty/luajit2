@@ -80,8 +80,6 @@ before_install:
   - export CXX=g++-5
 
 install:
-  - if [[ "$(uname -m)" == "x86_64" ]]; then XCFLAGS="$XCFLAGS -msse4.2"; fi
-  - if [[ "$(uname -m)" == "aarch64" ]]; then XCFLAGS="$XCFLAGS -march=armv8-a+crc"; fi
   - make -j$JOBS CCDEBUG=-g Q= PREFIX=$PREFIX XCFLAGS="$XCFLAGS" >build.log 2>&1 || (cat build.log && exit 1)
   - make install PREFIX=$PREFIX >build.log 2>&1 || (cat build.log && exit 1)
   - export PATH="$PREFIX/bin:$PATH"

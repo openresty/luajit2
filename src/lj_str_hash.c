@@ -13,18 +13,8 @@
 
 #include "lj_str_hash.h"
 
-#if LJ_OR_STRHASHCRC32
-
-#include <sys/types.h>
-#include <unistd.h>
-#include <time.h>
-#include "lj_vm.h"
-
 #if LUAJIT_TARGET == LUAJIT_ARCH_X64
-#include <smmintrin.h>
-
-#define lj_crc32_u32 	_mm_crc32_u32
-#define lj_crc32_u64 	_mm_crc32_u64
+#include "lj_vm.h"
 
 #ifndef F_CPU_SSE4_2
 #define F_CPU_SSE4_2 	(1 << 20)
@@ -32,15 +22,29 @@
 
 #elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
 #include <sys/auxv.h>
-#include <arm_acle.h>
 #include <errno.h>
-
-#define lj_crc32_u32 	__crc32cw
-#define lj_crc32_u64 	__crc32cd
 
 #ifndef HWCAP_CRC32
 #define HWCAP_CRC32 	(1 << 7)
 #endif
+#endif
+
+#if LJ_OR_STRHASHCRC32
+#include <sys/types.h>
+#include <unistd.h>
+#include <time.h>
+
+#if LUAJIT_TARGET == LUAJIT_ARCH_X64
+#include <smmintrin.h>
+
+#define lj_crc32_u32 	_mm_crc32_u32
+#define lj_crc32_u64 	_mm_crc32_u64
+
+#elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
+#include <arm_acle.h>
+
+#define lj_crc32_u32 	__crc32cw
+#define lj_crc32_u64 	__crc32cd
 
 #else
 #error "LJ_OR_STRHASHCRC32 not supported on this architecture"
@@ -288,20 +292,6 @@ static void lj_str_hash_init_random(void)
 
 #undef POW2_MASK
 
-LJ_FUNC unsigned char lj_check_crc32_support()
-{
-#if LUAJIT_TARGET == LUAJIT_ARCH_X64
-  uint32_t features[4];
-  if (lj_vm_cpuid(1, features))
-    return (features[2] & F_CPU_SSE4_2) != 0;
-#elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
-  uint32_t hwcap = getauxval(AT_HWCAP);
-  if (hwcap != ENOENT)
-    return (hwcap & HWCAP_CRC32) != 0;
-#endif
-  return 0;
-}
-
 LJ_FUNC void lj_init_strhashfn(global_State *g)
 {
   static StrHashFunction strhashfn;
@@ -317,6 +307,20 @@ LJ_FUNC void lj_init_strhashfn(global_State *g)
 }
 
 #endif
+
+LJ_FUNC unsigned char lj_check_crc32_support()
+{
+#if LUAJIT_TARGET == LUAJIT_ARCH_X64
+  uint32_t features[4];
+  if (lj_vm_cpuid(1, features))
+    return (features[2] & F_CPU_SSE4_2) != 0;
+#elif LUAJIT_TARGET == LUAJIT_ARCH_ARM64
+  uint32_t hwcap = getauxval(AT_HWCAP);
+  if (hwcap != ENOENT)
+    return (hwcap & HWCAP_CRC32) != 0;
+#endif
+  return 0;
+}
 
 LJ_FUNC MSize lj_str_hash_orig(const char *str, size_t lenx)
 {
