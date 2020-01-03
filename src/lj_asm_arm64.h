@@ -295,16 +295,19 @@ static void asm_fusexref(ASMState *as, A64Ins ai, Reg rd, IRRef ref,
       } else if (asm_isk32(as, ir->op1, &ofs)) {
 	ref = ir->op2;
       } else {
-	IRRef ref1 = ir->op1;
-	IRRef ref2 = ir->op2;
-	Reg rn;
-
-	if (irref_isk(ir->op1)) {
-	  ref1 = ir->op2;
-	  ref2 = ir->op1;
+	Reg rn = ra_alloc1(as, ir->op1, allow);
+	IRIns *irr = IR(ir->op2);
+	uint32_t m;
+	if (irr+1 == ir && !ra_used(irr) &&
+	    irr->o == IR_ADD && irref_isk(irr->op2)) {
+	  ofs = sizeof(GCstr) + IR(irr->op2)->i;
+	  if (emit_checkofs(ai, ofs)) {
+	    Reg rm = ra_alloc1(as, irr->op1, rset_exclude(allow, rn));
+	    m = A64F_M(rm) | A64F_EX(A64EX_SXTW);
+	    goto skipopm;
+	  }
 	}
-	rn = ra_alloc1(as, ref1, allow);
-	uint32_t m = asm_fuseopm(as, 0, ref2, rset_exclude(allow, rn));
+	m = asm_fuseopm(as, 0, ir->op2, rset_exclude(allow, rn));
 	ofs = sizeof(GCstr);
 	emit_lso(as, ai, rd, rd, ofs);
 	emit_dn(as, A64I_ADDx^m, rd, rn);
@@ -1045,7 +1048,8 @@ static void asm_xload(ASMState *as, IRIns *ir)
 {
   Reg dest = ra_dest(as, ir, irt_isfp(ir->t) ? RSET_FPR : RSET_GPR);
   lua_assert(!(ir->op2 & IRXLOAD_UNALIGNED));
-  asm_fusexref(as, asm_fxloadins(ir), dest, ir->op1, RSET_GPR);
+  asm_fusexref(as, asm_fxloadins(ir), dest, ir->op1,
+               rset_exclude(RSET_GPR, dest));
 }
 
 static int maybe_zero_val(ASMState *as, IRRef ref)
