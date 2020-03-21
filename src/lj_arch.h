@@ -1,6 +1,6 @@
 /*
 ** Target architecture selection.
-** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #ifndef _LJ_ARCH_H
@@ -300,9 +300,7 @@
 #define LJ_ARCH_PPC32ON64	1
 #define LJ_ARCH_NOFFI		1
 #elif LJ_ARCH_BITS == 64
-#define LJ_ARCH_PPC64		1
-#define LJ_TARGET_GC64		1
-#define LJ_ARCH_NOJIT		1	/* NYI */
+#error "No support for PPC64"
 #endif
 
 #if _ARCH_PWR7
@@ -334,17 +332,37 @@
 #elif LUAJIT_TARGET == LUAJIT_ARCH_MIPS32 || LUAJIT_TARGET == LUAJIT_ARCH_MIPS64
 
 #if defined(__MIPSEL__) || defined(__MIPSEL) || defined(_MIPSEL)
+#if __mips_isa_rev >= 6
+#define LJ_TARGET_MIPSR6	1
+#define LJ_TARGET_UNALIGNED	1
+#endif
 #if LUAJIT_TARGET == LUAJIT_ARCH_MIPS32
+#if LJ_TARGET_MIPSR6
+#define LJ_ARCH_NAME		"mips32r6el"
+#else
 #define LJ_ARCH_NAME		"mipsel"
+#endif
+#else
+#if LJ_TARGET_MIPSR6
+#define LJ_ARCH_NAME		"mips64r6el"
 #else
 #define LJ_ARCH_NAME		"mips64el"
+#endif
 #endif
 #define LJ_ARCH_ENDIAN		LUAJIT_LE
 #else
 #if LUAJIT_TARGET == LUAJIT_ARCH_MIPS32
+#if LJ_TARGET_MIPSR6
+#define LJ_ARCH_NAME		"mips32r6"
+#else
 #define LJ_ARCH_NAME		"mips"
+#endif
+#else
+#if LJ_TARGET_MIPSR6
+#define LJ_ARCH_NAME		"mips64r6"
 #else
 #define LJ_ARCH_NAME		"mips64"
+#endif
 #endif
 #define LJ_ARCH_ENDIAN		LUAJIT_BE
 #endif
@@ -381,7 +399,9 @@
 #define LJ_TARGET_UNIFYROT	2	/* Want only IR_BROR. */
 #define LJ_ARCH_NUMMODE		LJ_NUMMODE_DUAL
 
-#if _MIPS_ARCH_MIPS32R2 || _MIPS_ARCH_MIPS64R2
+#if LJ_TARGET_MIPSR6
+#define LJ_ARCH_VERSION		60
+#elif _MIPS_ARCH_MIPS32R2 || _MIPS_ARCH_MIPS64R2
 #define LJ_ARCH_VERSION		20
 #else
 #define LJ_ARCH_VERSION		10
@@ -462,7 +482,7 @@
 #error "No support for ILP32 model on ARM64"
 #endif
 #elif LJ_TARGET_PPC
-#if !LJ_ARCH_PPC64 && (defined(_LITTLE_ENDIAN) && (!defined(_BYTE_ORDER) || (_BYTE_ORDER == _LITTLE_ENDIAN)))
+#if defined(_LITTLE_ENDIAN) && (!defined(_BYTE_ORDER) || (_BYTE_ORDER == _LITTLE_ENDIAN))
 #error "No support for little-endian PPC32"
 #endif
 #if defined(__NO_FPRS__) && !defined(_SOFT_FLOAT)
@@ -472,8 +492,13 @@
 #if !((defined(_MIPS_SIM_ABI32) && _MIPS_SIM == _MIPS_SIM_ABI32) || (defined(_ABIO32) && _MIPS_SIM == _ABIO32))
 #error "Only o32 ABI supported for MIPS32"
 #endif
+#if LJ_TARGET_MIPSR6
+/* Not that useful, since most available r6 CPUs are 64 bit. */
+#error "No support for MIPS32R6"
+#endif
 #elif LJ_TARGET_MIPS64
 #if !((defined(_MIPS_SIM_ABI64) && _MIPS_SIM == _MIPS_SIM_ABI64) || (defined(_ABI64) && _MIPS_SIM == _ABI64))
+/* MIPS32ON64 aka n32 ABI support might be desirable, but difficult. */
 #error "Only n64 ABI supported for MIPS64"
 #endif
 #endif

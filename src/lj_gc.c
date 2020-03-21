@@ -1,6 +1,6 @@
 /*
 ** Garbage collector.
-** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
 **
 ** Major portions taken verbatim or adapted from the Lua interpreter.
 ** Copyright (C) 1994-2008 Lua.org, PUC-Rio. See Copyright Notice in lua.h
@@ -25,6 +25,7 @@
 #include "lj_cdata.h"
 #endif
 #include "lj_trace.h"
+#include "lj_dispatch.h"
 #include "lj_vm.h"
 
 #define GCSTEPSIZE	1024u

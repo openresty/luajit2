@@ -3,7 +3,7 @@
 <head>
 <title>Installation</title>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-<meta name="Copyright" content="Copyright (C) 2005-2018">
+<meta name="Copyright" content="Copyright (C) 2005-2020">
 <meta name="Language" content="en">
 <link rel="stylesheet" type="text/css" href="bluequad.css" media="screen">
 <link rel="stylesheet" type="text/css" href="bluequad-print.css" media="print">
@@ -38,7 +38,7 @@ td.compatno {
 </head>
 <body>
 <div id="site">
-<a href="http://luajit.org"><span>Lua<span id="logo">JIT</span></span></a>
+<a href="https://luajit.org"><span>Lua<span id="logo">JIT</span></span></a>
 </div>
 <div id="head">
 <h1>Installation</h1>
@@ -47,7 +47,7 @@ td.compatno {
 <ul><li>
 <a href="luajit.html">LuaJIT</a>
 <ul><li>
-<a href="http://luajit.org/download.html">Download <span class="ext">&raquo;</span></a>
+<a href="https://luajit.org/download.html">Download <span class="ext">&raquo;</span></a>
 </li><li>
 <a class="current" href="install.html">Installation</a>
 </li><li>
@@ -73,17 +73,12 @@ td.compatno {
 </li></ul>
 </li><li>
 <a href="status.html">Status</a>
-<ul><li>
-<a href="changes.html">Changes</a>
-</li></ul>
 </li><li>
 <a href="faq.html">FAQ</a>
 </li><li>
-<a href="http://luajit.org/performance.html">Performance <span class="ext">&raquo;</span></a>
-</li><li>
 <a href="http://wiki.luajit.org/">Wiki <span class="ext">&raquo;</span></a>
 </li><li>
-<a href="http://luajit.org/list.html">Mailing List <span class="ext">&raquo;</span></a>
+<a href="https://luajit.org/list.html">Mailing List <span class="ext">&raquo;</span></a>
 </li></ul>
 </div>
 <div id="main">
@@ -250,7 +245,7 @@ Obviously the prefixes given during build and installation need to be the same.
 <p>
 Either install one of the open source SDKs
 (<a href="http://mingw.org/"><span class="ext">&raquo;</span>&nbsp;MinGW</a> or
-<a href="http://www.cygwin.com/"><span class="ext">&raquo;</span>&nbsp;Cygwin</a>), which come with a modified
+<a href="https://www.cygwin.com/">Cygwin</a>), which come with a modified
 GCC plus the required development headers.
 Or install Microsoft's Visual Studio (MSVC).
 </p>
@@ -393,7 +388,7 @@ make CROSS=mips-linux- TARGET_CFLAGS="-mips64r2 -mabi=64"
 make CROSS=mipsel-linux- TARGET_CFLAGS="-mips64r2 -mabi=64"
 </pre>
 <p>
-You can cross-compile for <b id="android">Android</b> using the <a href="http://developer.android.com/ndk/"><span class="ext">&raquo;</span>&nbsp;Android NDK</a>.
+You can cross-compile for <b id="android">Android</b> using the <a href="https://developer.android.com/ndk/">Android NDK</a>.
 Please adapt the environment variables to match the install locations and the
 desired target platform. E.g. Android&nbsp;4.1 corresponds to ABI level&nbsp;16.
 </p>
@@ -417,7 +412,7 @@ make HOST_CC="gcc -m32" CROSS=$NDKCROSS \
      TARGET_LD=$NDKCC
 </pre>
 <p>
-You can cross-compile for <b id="ios">iOS 3.0+</b> (iPhone/iPad) using the <a href="http://developer.apple.com/ios/"><span class="ext">&raquo;</span>&nbsp;iOS SDK</a>:
+You can cross-compile for <b id="ios">iOS 3.0+</b> (iPhone/iPad) using the <a href="https://developer.apple.com/ios/">iOS SDK</a>:
 </p>
 <p style="font-size: 8pt;">
 Note: <b>the JIT compiler is disabled for iOS</b>, because regular iOS Apps
@@ -552,7 +547,7 @@ Make sure the <tt>jit</tt> library is loaded or the JIT compiler
 will not be activated.</li>
 <li>The <tt>bit.*</tt> module for bitwise operations
 is already built-in. There's no need to statically link
-<a href="http://bitop.luajit.org/"><span class="ext">&raquo;</span>&nbsp;Lua BitOp</a> to your application.</li>
+<a href="https://bitop.luajit.org/">Lua BitOp</a> to your application.</li>
 </ul>
 
 <h2 id="distro">Hints for Distribution Maintainers</h2>
@@ -619,7 +614,7 @@ to me (the upstream) and not you (the package maintainer), anyway.
 </div>
 <div id="foot">
 <hr class="hide">
-Copyright &copy; 2005-2018
+Copyright &copy; 2005-2020
 <span class="noprint">
 &middot;
 <a href="contact.html">Contact</a>
