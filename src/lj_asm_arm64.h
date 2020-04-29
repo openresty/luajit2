@@ -1116,6 +1116,7 @@ static void asm_ahuvload(ASMState *as, IRIns *ir)
   } else if (irt_isnil(ir->t)) {
     emit_n(as, (A64I_CMNx^A64I_K12) | A64F_U12(1), tmp);
   } else {
+    rset_clear(allow, tmp);
     emit_nm(as, A64I_CMPx | A64F_SH(A64SH_LSR, 32),
 	    ra_allock(as, (irt_toitype(ir->t) << 15) | 0x7fff, allow), tmp);
   }
