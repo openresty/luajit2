@@ -13,9 +13,12 @@ openresty/luajit2 - OpenResty's maintained branch of LuaJIT.
         * [table.nkeys](#tablenkeys)
         * [table.clone](#tableclone)
         * [jit.prngstate](#jitprngstate)
+        * [jit.crc32](#jitcrc32)
+        * [jit.strhashcrc32](#jitstrhashcrc32)
         * [thread.exdata](#threadexdata)
     * [New macros](#new-macros)
         * [`OPENRESTY_LUAJIT`](#openresty-luajit)
+        * [`LJ_OR_DISABLE_STRHASHCRC32`](#lj-or-disable-strhashcrc32)
     * [Optimizations](#optimizations)
         * [Updated JIT default parameters](#updated-jit-default-parameters)
         * [String hashing](#string-hashing)
@@ -155,6 +158,45 @@ local newstate = jit.prngstate(123456)
 
 [Back to TOC](#table-of-contents)
 
+### jit.crc32
+
+**syntax:** *ok = jit.crc32()*
+
+Returns a boolean value indicating if the current architecture supports a CRC32
+instruction set. CRC32 support will be checked at runtime on x64 and ARM64
+platforms.
+
+CRC32 support allows for this branch to use an optimized string hashing
+algorithm. See the [String hashing](#string-hashing) section for details on
+how to enable this optimization.
+
+Usage:
+
+```lua
+local ok = jit.crc32()
+```
+
+[Back to TOC](#table-of-contents)
+
+### jit.strhashcrc32
+
+**syntax:** *ok = jit.strhashcrc32()*
+
+Returns a boolean value indicating if the optimized string hashing algorithm
+implemented by this branch is enabled. The `ok` return value will be `true` if
+it is enabled, or `false` otherwise.
+
+See the [String hashing](#string-hashing) section for details on
+how to enable this optimization.
+
+Usage:
+
+```lua
+local ok = jit.strhashcrc32()
+```
+
+[Back to TOC](#table-of-contents)
+
 ### thread.exdata
 
 **syntax:** *exdata = th_exdata(data?)*
@@ -207,6 +249,14 @@ help distinguishing this OpenResty-specific branch of LuaJIT.
 
 [Back to TOC](#table-of-contents)
 
+### `LJ_OR_DISABLE_STRHASHCRC32`
+
+When specified at compilation (`-DLJ_OR_DISABLE_STRHASHCRC32`), this flag will
+disable the string hashing optimization described in the [String
+hashing](#string-hashing) section.
+
+[Back to TOC](#table-of-contents)
+
 ## Optimizations
 
 ### Updated JIT default parameters
@@ -227,13 +277,17 @@ maxmcode=40960  -- in KB
 
 ### String hashing
 
-This optimization only applies to Intel CPUs supporting the SSE 4.2 instruction
-sets. For such CPUs, and when this branch is compiled with `-msse4.2`, the
-string hashing function used for strings interning will be based on an
-optimized crc32 implementation (see `lj_str_new()`).
+This optimizations modifies the string hashing algorithm to use a CRC32-based
+variant. This variant still provides constant-time hashing complexity (`O(n)`)
+but makes hash collision attacks harder for strings up to 127 bytes of size
+(see `lj_str_new()`).
 
-This optimization still provides constant-time hashing complexity (`O(n)`), but
-makes hash collision attacks harder for strings up to 127 bytes of size.
+This optimization is only available for x64 and ARM64 architectures, and will
+be enabled if a CRC32 instruction set is detected at runtime (see
+[jit.crc32](#jitcrc32)).
+
+**Note:** This optimization can be disabled by compiling LuaJIT with
+`-DLJ_OR_DISABLE_STRHASHCRC32`.
 
 [Back to TOC](#table-of-contents)
 

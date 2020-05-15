@@ -498,9 +498,9 @@ LJLIB_O= lib_base.o lib_math.o lib_bit.o lib_string.o lib_table.o \
 LJLIB_C= $(LJLIB_O:.o=.c)
 
 LJCORE_O= lj_gc.o lj_err.o lj_char.o lj_bc.o lj_obj.o lj_buf.o \
-	  lj_str.o lj_tab.o lj_func.o lj_udata.o lj_meta.o lj_debug.o \
-	  lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o lj_strscan.o \
-	  lj_strfmt.o lj_strfmt_num.o lj_api.o lj_profile.o \
+	  lj_str.o lj_str_hash.o lj_tab.o lj_func.o lj_udata.o lj_meta.o \
+	  lj_debug.o lj_state.o lj_dispatch.o lj_vmevent.o lj_vmmath.o \
+	  lj_strscan.o lj_strfmt.o lj_strfmt_num.o lj_api.o lj_profile.o \
 	  lj_lex.o lj_parse.o lj_bcread.o lj_bcwrite.o lj_load.o \
 	  lj_ir.o lj_opt_mem.o lj_opt_fold.o lj_opt_narrow.o \
 	  lj_opt_dce.o lj_opt_loop.o lj_opt_split.o lj_opt_sink.o \
@@ -528,6 +528,15 @@ ALL_HDRGEN= lj_bcdef.h lj_ffdef.h lj_libdef.h lj_recdef.h lj_folddef.h \
 ALL_GEN= $(LJVM_S) $(ALL_HDRGEN) $(LIB_VMDEFP)
 WIN_RM= *.obj *.lib *.exp *.dll *.exe *.manifest *.pdb *.ilk
 ALL_RM= $(ALL_T) $(ALL_GEN) *.o host/*.o $(WIN_RM)
+
+ifeq (x64,$(TARGET_LJARCH))
+  lj_str_hash-CFLAGS = -msse4.2
+endif
+ifeq (arm64,$(TARGET_LJARCH))
+  lj_str_hash-CFLAGS = -march=armv8-a+crc
+endif
+
+F_CFLAGS = $($(patsubst %.c,%-CFLAGS,$<))
 
 ##############################################################################
 # Build mode handling.
@@ -694,8 +703,8 @@ lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
 
 %.o: %.c
 	$(E) "CC        $@"
-	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) -c -o $(@:.o=_dyn.o) $<
-	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) -c -o $@ $<
+	$(Q)$(TARGET_DYNCC) $(TARGET_ACFLAGS) $(F_CFLAGS) -c -o $(@:.o=_dyn.o) $<
+	$(Q)$(TARGET_CC) $(TARGET_ACFLAGS) $(F_CFLAGS) -c -o $@ $<
 
 %.o: %.S
 	$(E) "ASM       $@"

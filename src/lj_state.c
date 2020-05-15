@@ -204,6 +204,9 @@ LUA_API lua_State *lua_newstate(lua_Alloc f, void *ud)
   setgcref(g->uvhead.prev, obj2gco(&g->uvhead));
   setgcref(g->uvhead.next, obj2gco(&g->uvhead));
   g->strmask = ~(MSize)0;
+#if LJ_OR_STRHASHCRC32
+  lj_init_strhashfn(g);
+#endif
   setnilV(registry(L));
   setnilV(&g->nilnode.val);
   setnilV(&g->nilnode.key);

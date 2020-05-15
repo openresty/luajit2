@@ -1,9 +1,12 @@
-sudo: required
-dist: xenial
-
 os: linux
+dist: xenial
+sudo: false
 
 language: c
+
+arch:
+  - amd64
+ #- arm64
 
 compiler:
   - gcc
@@ -12,38 +15,84 @@ compiler:
 addons:
   apt:
     packages:
-    - axel
+    - g++-5
+    - valgrind
     - cpanminus
     - libtest-base-perl
     - libtext-diff-perl
     - libtest-longstring-perl
     - liblist-moreutils-perl
     - libparallel-forkmanager-perl
-    - libgd-dev
     - libmpc-dev
-    - build-essential
     - libgtk2.0-dev
-    - valgrind
 
 env:
   global:
-  - JOBS=3
-  - LUAJIT_PREFIX=/opt/luajit21
-  - LUAJIT_SYSM_PREFIX=/opt/luajit21-sysm
-  - LUAJIT_COMMON_XCFLAGS="-DLUA_USE_APICHECK -DLUA_USE_ASSERT -DLUAJIT_NUMMODE=2 -msse4.2 -O1"
+    - JOBS=6
+    - PREFIX=$HOME/luajit
+    - XCFLAGS="-O1 -DLUA_USE_APICHECK -DLUA_USE_ASSERT -DLUAJIT_NUMMODE=2"
   matrix:
-  - LUAJIT_XCFLAGS="$LUAJIT_COMMON_XCFLAGS"
-  - LUAJIT_XCFLAGS="-DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1
-  - LUAJIT_XCFLAGS="-DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC -DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1 FLAGS=-v
-  - LUAJIT_XCFLAGS="-DLUAJIT_DISABLE_GC64 -DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1
+    - XCFLAGS="-O3 -DLUAJIT_ENABLE_LUA52COMPAT -DLUAJIT_NUMMODE=2" # OpenResty releases
+    - XCFLAGS="-DLUAJIT_ENABLE_LUA52COMPAT -DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC $XCFLAGS"
+    - XCFLAGS="-DLUAJIT_DISABLE_JIT $XCFLAGS"
+    - XCFLAGS="-DLUAJIT_DISABLE_GC64 $XCFLAGS"
+    - XCFLAGS="-DLJ_OR_DISABLE_STRHASHCRC32 $XCFLAGS"
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - arch: arm64
+
+stages:
+  - test
+  - openresty tests
+  - string hashing tests
+
+jobs:
+  allow_failures:
+    - arch: arm64
+  include:
+    - stage: openresty tests
+      script: prove -j$JOBS t
+      env:
+    - stage: openresty tests
+      script: prove -j$JOBS t
+      env:
+      arch: arm64
+    - stage: openresty tests
+      script: prove -j$JOBS t
+      env: TEST_LJ_USE_VALGRIND=1 XCFLAGS="-DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC $XCFLAGS"
+    - stage: string hashing tests
+      script: make -C test test
+      env:
+    - stage: string hashing tests
+      script: make -C test test
+      env:
+      arch: arm64
+    - stage: string hashing tests
+      script: make -C test test
+      env: WITH_VALGRIND=1 XCFLAGS="-DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC $XCFLAGS"
+
+before_install:
+  - cpanm --local-lib=$TRAVIS_BUILD_DIR/perl5 local::lib && eval $(perl -I$TRAVIS_BUILD_DIR/perl5/lib/perl5/ -Mlocal::lib)
+  - cpanm --notest IPC::Run3
+  - valgrind --version
+  - export CXX=g++-5
 
 install:
-  - git clone https://github.com/openresty/luajit2-test-suite.git ../luajit2-test-suite
+  - make -j$JOBS CCDEBUG=-g Q= PREFIX=$PREFIX XCFLAGS="$XCFLAGS" >build.log 2>&1 || (cat build.log && exit 1)
+  - make install PREFIX=$PREFIX >build.log 2>&1 || (cat build.log && exit 1)
+  - export PATH="$PREFIX/bin:$PATH"
 
 script:
-  - valgrind --version
-  - cd ../luajit2
-  - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_PREFIX CC=$CC XCFLAGS="$LUAJIT_XCFLAGS" > build.log 2>&1 || (cat build.log && exit 1)
-  - sudo make install PREFIX=$LUAJIT_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
-  - cd ../luajit2-test-suite
-  - ./run-tests -j $JOBS $FLAGS $LUAJIT_PREFIX
+  - if [[ "$XCFLAGS" =~ "LUAJIT_ENABLE_LUA52COMPAT" ]]; then export LUA52=1; fi
+  - if [[ "$XCFLAGS" =~ "LUAJIT_USE_VALGRIND" ]]; then export FLAGS=-v; fi
+  - if [[ "$XCFLAGS" =~ "LJ_OR_DISABLE_STRHASHCRC32" ]]; then export NO_STRHASHCRC32=1; fi
+  - git clone https://github.com/openresty/luajit2-test-suite.git
+  - pushd luajit2-test-suite
+  - ./run-tests -j$JOBS $FLAGS $PREFIX $PREFIX/bin/luajit $CC $CXX
+
+cache:
+  apt: true
+  directories:
+    - perl5

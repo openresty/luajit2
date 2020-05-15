@@ -2,7 +2,7 @@
 DIR=$(cd $(dirname $0); pwd)
 cd $DIR
 
-LUAJIT=$DIR/../../luajit
+LUAJIT=$DIR/../src/luajit
 HASERR=0
 
 find $DIR/unit -name "*.lua" -print | while read x; do

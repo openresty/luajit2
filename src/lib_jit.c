@@ -15,6 +15,7 @@
 #include "lj_err.h"
 #include "lj_debug.h"
 #include "lj_str.h"
+#include "lj_str_hash.h"
 #include "lj_tab.h"
 #include "lj_state.h"
 #include "lj_bc.h"
@@ -153,6 +154,23 @@ LJLIB_CF(jit_prngstate)
   int32_t cur = 0;
 #endif
   setintV(L->top++, cur);
+  return 1;
+}
+
+LJLIB_CF(jit_crc32)
+{
+  setboolV(L->top++, lj_check_crc32_support());
+  return 1;
+}
+
+LJLIB_CF(jit_strhashcrc32)
+{
+#if LJ_OR_STRHASHCRC32
+  global_State *g = G(L);
+  setboolV(L->top++, (g->strhashfn != lj_str_hash_orig) ? 1 : 0);
+#else
+  setboolV(L->top++, 0);
+#endif
   return 1;
 }
 
