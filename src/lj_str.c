@@ -165,12 +165,17 @@ lj_str_indep_hash(GCstr *str)
   return lj_str_original_hash(strdata(str), str->len);
 }
 
+#if defined(__aarch64__)
+/* AArch64 CRC32 support determined at runtime */
+#include "arm64/src/lj_str_hash_arm64.h"
+#else /* x64 */
 #include "x64/src/lj_str_hash_x64.h"
 
 #if defined(LJ_ARCH_STR_HASH)
 #define LJ_STR_HASH LJ_ARCH_STR_HASH
 #else
 #define LJ_STR_HASH lj_str_original_hash
+#endif
 #endif
 
 /* Intern a string and return string object. */
