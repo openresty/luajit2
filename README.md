@@ -288,9 +288,6 @@ KN    2    1.390671161567e-309
   even for alpha or beta versions.
 * Applied a patch to fix DragonFlyBSD compatibility. Note: this is not an
   officially supported target.
-* Turned off string comparison optimizations for 64-bit architectures when the
-  build option `LUAJIT_USE_VALGRIND` is specified. LuaJIT is now (almost)
-  valgrind clean.
 * feature: jit.dump: output Lua source location after every BC.
 * feature: added internal memory-buffer-based trace entry/exit/start-recording
   event logging, mainly for debugging bugs in the JIT compiler. it requires
