@@ -282,7 +282,7 @@ static void LJ_FASTCALL recff_rawlen(jit_State *J, RecordFFData *rd)
   if (tref_isstr(tr))
     J->base[0] = emitir(IRTI(IR_FLOAD), tr, IRFL_STR_LEN);
   else if (tref_istab(tr))
-    J->base[0] = lj_ir_call(J, IRCALL_lj_tab_len, tr);
+    J->base[0] = emitir(IRTI(IR_ALEN), tr, TREF_NIL);
   /* else: Interpreter will throw. */
   UNUSED(rd);
 }
@@ -564,7 +564,7 @@ static void LJ_FASTCALL recff_math_atan2(jit_State *J, RecordFFData *rd)
 {
   TRef tr = lj_ir_tonum(J, J->base[0]);
   TRef tr2 = lj_ir_tonum(J, J->base[1]);
-  J->base[0] = emitir(IRTN(IR_ATAN2), tr, tr2);
+  J->base[0] = lj_ir_call(J, IRCALL_atan2, tr, tr2);
   UNUSED(rd);
 }
 
@@ -581,41 +581,10 @@ static void LJ_FASTCALL recff_math_ldexp(jit_State *J, RecordFFData *rd)
   UNUSED(rd);
 }
 
-/* Record math.asin, math.acos, math.atan. */
-static void LJ_FASTCALL recff_math_atrig(jit_State *J, RecordFFData *rd)
-{
-  TRef y = lj_ir_tonum(J, J->base[0]);
-  TRef x = lj_ir_knum_one(J);
-  uint32_t ffid = rd->data;
-  if (ffid != FF_math_atan) {
-    TRef tmp = emitir(IRTN(IR_MUL), y, y);
-    tmp = emitir(IRTN(IR_SUB), x, tmp);
-    tmp = emitir(IRTN(IR_FPMATH), tmp, IRFPM_SQRT);
-    if (ffid == FF_math_asin) { x = tmp; } else { x = y; y = tmp; }
-  }
-  J->base[0] = emitir(IRTN(IR_ATAN2), y, x);
-}
-
-static void LJ_FASTCALL recff_math_htrig(jit_State *J, RecordFFData *rd)
+static void LJ_FASTCALL recff_math_call(jit_State *J, RecordFFData *rd)
 {
   TRef tr = lj_ir_tonum(J, J->base[0]);
   J->base[0] = emitir(IRTN(IR_CALLN), tr, rd->data);
-}
-
-static void LJ_FASTCALL recff_math_modf(jit_State *J, RecordFFData *rd)
-{
-  TRef tr = J->base[0];
-  if (tref_isinteger(tr)) {
-    J->base[0] = tr;
-    J->base[1] = lj_ir_kint(J, 0);
-  } else {
-    TRef trt;
-    tr = lj_ir_tonum(J, tr);
-    trt = emitir(IRTN(IR_FPMATH), tr, IRFPM_TRUNC);
-    J->base[0] = trt;
-    J->base[1] = emitir(IRTN(IR_SUB), tr, trt);
-  }
-  rd->nres = 2;
 }
 
 static void LJ_FASTCALL recff_math_pow(jit_State *J, RecordFFData *rd)
@@ -648,7 +617,7 @@ static void LJ_FASTCALL recff_math_random(jit_State *J, RecordFFData *rd)
   GCudata *ud = udataV(&J->fn->c.upvalue[0]);
   TRef tr, one;
   lj_ir_kgc(J, obj2gco(ud), IRT_UDATA);  /* Prevent collection. */
-  tr = lj_ir_call(J, IRCALL_lj_math_random_step, lj_ir_kptr(J, uddata(ud)));
+  tr = lj_ir_call(J, IRCALL_lj_prng_u64d, lj_ir_kptr(J, uddata(ud)));
   one = lj_ir_knum_one(J);
   tr = emitir(IRTN(IR_SUB), tr, one);
   if (J->base[0]) {
@@ -1058,7 +1027,7 @@ static void LJ_FASTCALL recff_table_insert(jit_State *J, RecordFFData *rd)
   rd->nres = 0;
   if (tref_istab(ix.tab) && ix.val) {
     if (!J->base[2]) {  /* Simple push: t[#t+1] = v */
-      TRef trlen = lj_ir_call(J, IRCALL_lj_tab_len, ix.tab);
+      TRef trlen = emitir(IRTI(IR_ALEN), ix.tab, TREF_NIL);
       GCtab *t = tabV(&rd->argv[0]);
       ix.key = emitir(IRTI(IR_ADD), trlen, lj_ir_kint(J, 1));
       settabV(J->L, &ix.tabv, t);
@@ -1082,7 +1051,7 @@ static void LJ_FASTCALL recff_table_concat(jit_State *J, RecordFFData *rd)
 	       lj_opt_narrow_toint(J, J->base[2]) : lj_ir_kint(J, 1);
     TRef tre = (J->base[1] && J->base[2] && !tref_isnil(J->base[3])) ?
 	       lj_opt_narrow_toint(J, J->base[3]) :
-	       lj_ir_call(J, IRCALL_lj_tab_len, tab);
+	       emitir(IRTI(IR_ALEN), tab, TREF_NIL);
     TRef hdr = recff_bufhdr(J);
     TRef tr = lj_ir_call(J, IRCALL_lj_buf_puttab, hdr, tab, sep, tri, tre);
     emitir(IRTG(IR_NE, IRT_PTR), tr, lj_ir_kptr(J, NULL));
@@ -1176,13 +1145,7 @@ static TRef recff_io_fp(jit_State *J, TRef *udp, int32_t id)
 {
   TRef tr, ud, fp;
   if (id) {  /* io.func() */
-#if LJ_GC64
-    /* TODO: fix ARM32 asm_fload(), so we can use this for all archs. */
     ud = lj_ir_ggfload(J, IRT_UDATA, GG_OFS(g.gcroot[id]));
-#else
-    tr = lj_ir_kptr(J, &J2G(J)->gcroot[id]);
-    ud = emitir(IRT(IR_XLOAD, IRT_UDATA), tr, 0);
-#endif
   } else {  /* fp:method() */
     ud = J->base[0];
     if (!tref_isudata(ud))
