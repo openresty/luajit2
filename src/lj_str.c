@@ -159,7 +159,6 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
   h ^= b; h -= lj_rol(b, 16);
   /* Check if the string has already been interned. */
   o = gcref(g->strhash[h & g->strmask]);
-#ifndef LUAJIT_USE_VALGRIND
   if (LJ_LIKELY((((uintptr_t)str+len-1) & (LJ_PAGESIZE-1)) <= LJ_PAGESIZE-4)) {
     while (o != NULL) {
       GCstr *sx = gco2str(o);
@@ -171,7 +170,6 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
       o = gcnext(o);
     }
   } else {  /* Slow path: end of string is too close to a page boundary. */
-#endif
     while (o != NULL) {
       GCstr *sx = gco2str(o);
       if (sx->len == len && memcmp(str, strdata(sx), len) == 0) {
@@ -181,9 +179,7 @@ GCstr *lj_str_new(lua_State *L, const char *str, size_t lenx)
       }
       o = gcnext(o);
     }
-#ifndef LUAJIT_USE_VALGRIND
   }
-#endif
   /* Nope, create a new string. */
   s = lj_mem_newt(L, sizeof(GCstr)+len+1, GCstr);
   newwhite(g, s);
