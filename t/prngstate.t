@@ -13,17 +13,27 @@ __DATA__
 --- lua
 jit.off()
 
-print(jit.prngstate())
-print(jit.prngstate(32))
-print(jit.prngstate(5617))
-print(jit.prngstate())
+function print_array(a)
+  local out = a[1]
+  for i=2,#a do
+    out = out.." "..tostring(a[i])
+  end
+  print(out)
+end
+
+jit.prngstate({32})
+print_array(jit.prngstate({56,1,7}))
+print_array(jit.prngstate({423,432,432,423,56,867,35,5347}))
+print_array(jit.prngstate())
+print_array(jit.prngstate({423,432,432,423,56,867,35,5347,452}))
 --- out
-0
-0
-32
-5617
+32 0 0 0 0 0 0 0
+56 1 7 0 0 0 0 0
+423 432 432 423 56 867 35 5347
 --- jv
 --- err
+bad argument #1 to 'prngstate' (PRNG state must be an array with up to 8 integers)
+--- exit: 1
 
 
 
@@ -32,7 +42,7 @@ print(jit.prngstate())
 jit.opt.start("minstitch=100000", "hotloop=2")
 
 for i = 1, 50 do
-  jit.prngstate(i)
+  jit.prngstate({i})
 end
 print('ok')
 --- out

@@ -312,6 +312,8 @@ void lj_trace_initstate(global_State *g)
   jit_State *J = G2J(g);
   TValue *tv;
 
+  J->prng = g->prng;
+
   /* Initialize aligned SIMD constants. */
   tv = LJ_KSIMD(J, LJ_KSIMD_ABS);
   tv[0].u64 = U64x(7fffffff,ffffffff);
@@ -385,7 +387,7 @@ static void penalty_pc(jit_State *J, GCproto *pt, BCIns *pc, TraceError e)
     if (mref(J->penalty[i].pc, const BCIns) == pc) {  /* Cache slot found? */
       /* First try to bump its hotcount several times. */
       val = ((uint32_t)J->penalty[i].val << 1) +
-	    (lj_prng_u64(&J2G(J)->prng) & ((1u<<PENALTY_RNDBITS)-1));
+	    (lj_prng_u64(&J->prng) & ((1u<<PENALTY_RNDBITS)-1));
       if (val > PENALTY_MAX) {
 	blacklist_pc(pt, pc);  /* Blacklist it, if that didn't help. */
 	return;

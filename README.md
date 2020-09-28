@@ -137,21 +137,22 @@ second argument.
 
 **syntax:** *state = jit.prngstate(state?)*
 
-Returns (and optionally sets) the current PRNG state (a Lua number) currently
-used by the JIT compiler.
+Returns (and optionally sets) the current PRNG state (an array of 8 Lua
+numbers with 32-bit integer values) currently used by the JIT compiler.
 
-When the `state` argument is non-nil, it is expected to be a number, and will
-override the current PRNG state.
+When the `state` argument is non-nil, it is expected to be an array of up to 8
+unsigned Lua numbers, each with value less than 2\*\*32-1. This will set the
+current PRNG state and return the state that was overridden.
 
 Usage:
 
 ```lua
 local state = jit.prngstate()
-local newstate = jit.prngstate(123456)
+local oldstate = jit.prngstate(123456)
 ```
 
 **Note:** This API has no effect if LuaJIT is compiled with
-`-DLUAJIT_DISABLE_JIT`, and will return `0`.
+`-DLUAJIT_DISABLE_JIT`, and will return a table with all `0`.
 
 [Back to TOC](#table-of-contents)
 

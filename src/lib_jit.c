@@ -150,9 +150,50 @@ LJLIB_CF(jit_attach)
 
 LJLIB_CF(jit_prngstate)
 {
-  /* XXX Adapt to new pRNG algorithm.  */
-  int32_t cur = 0;
-  setintV(L->top++, cur);
+  GCtab *cur = lj_tab_new(L, 8, 0);
+
+#if LJ_HASJIT
+  jit_State *J = L2J(L);
+
+  /* The old state. */
+  for (int i = 1; i <= 4; i++) {
+    setintV(lj_tab_setint(L, cur, i*2-1), J->prng.u[i-1] & 0xffffffff);
+    setintV(lj_tab_setint(L, cur, i*2), J->prng.u[i-1] >> 32);
+  }
+
+  /* We need to set new state using the input array. */
+  if (L->base < L->top && !tvisnil(L->base)) {
+    GCtab *t = lj_lib_checktab(L, 1);
+    PRNGState prng;
+    int i = 1, len = lj_tab_len(t);
+
+    /* The input array must have at most 8 elements. */
+    if (len > 8)
+      lj_err_arg(L, 1, LJ_ERR_PRNGSTATE);
+
+    for (i = 1; i <= len; i++) {
+      cTValue *v = lj_tab_getint(t, i);
+
+      if (!tvisint(v) && (!tvisnum(v) || (double)(uint32_t)numV(v) != numV(v)))
+        lj_err_arg(L, 1, LJ_ERR_PRNGSTATE);
+
+      if (i & 1)
+	prng.u[(i-1)/2] = numberVint(v);
+      else
+	prng.u[(i-1)/2] = prng.u[(i-1)/2] | ((uint64_t)numberVint(v) << 32);
+    }
+
+    for (i /= 2; i < 4; i++)
+      prng.u[i] = 0;
+
+    /* Re-initialize the JIT prng. */
+    J->prng = prng;
+  }
+#else
+  for (int i = 1; i <= 8; i++)
+    setintV(lj_tab_setint(L, cur, i), 0);
+#endif
+  settabV(L, L->top++, cur);
   return 1;
 }
 

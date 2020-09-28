@@ -108,6 +108,7 @@ ERRDEF(NOJIT,	"no JIT compiler for this architecture (yet)")
 ERRDEF(NOJIT,	"JIT compiler permanently disabled by build option")
 #endif
 ERRDEF(JITOPT,	"unknown or malformed optimization flag " LUA_QS)
+ERRDEF(PRNGSTATE,	"PRNG state must be an array with up to 8 integers")
 
 /* Lexer/parser errors. */
 ERRDEF(XMODE,	"attempt to load chunk with wrong mode")
