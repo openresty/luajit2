@@ -12,6 +12,7 @@
 #include "lj_str.h"
 #include "lj_char.h"
 #include "lj_prng.h"
+#include "x64/src/lj_str_hash_x64.h"
 
 /* -- String helpers ------------------------------------------------------ */
 
@@ -82,6 +83,7 @@ int lj_str_haspattern(GCstr *s)
 
 /* -- String hashing ------------------------------------------------------ */
 
+#ifndef ARCH_HASH_SPARSE
 /* Keyed sparse ARX string hash. Constant time. */
 static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
 {
@@ -104,8 +106,9 @@ static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
   h ^= b; h -= lj_rol(b, 16);
   return h;
 }
+#endif
 
-#if LUAJIT_SECURITY_STRHASH
+#if LUAJIT_SECURITY_STRHASH && !defined(ARCH_HASH_DENSE)
 /* Keyed dense ARX string hash. Linear time. */
 static LJ_NOINLINE StrHash hash_dense(uint64_t seed, StrHash h,
 				      const char *str, MSize len)
