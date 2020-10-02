@@ -472,8 +472,6 @@ typedef struct jit_State {
 
   HotPenalty penalty[PENALTY_SLOTS];  /* Penalty slots. */
   uint32_t penaltyslot;	/* Round-robin index into penalty slots. */
-  PRNGState prng;	/* PRNG state for the JIT compiler, defaults to prng in
-			   global_State. */
 
 #ifdef LUAJIT_ENABLE_TABLE_BUMP
   RBCHashEntry rbchash[RBCHASH_SLOTS];  /* Reverse bytecode map. */
@@ -505,6 +503,8 @@ typedef struct jit_State {
   BCLine prev_line;	/* Previous line. */
   int prof_mode;	/* Profiling mode: 0, 'f', 'l'. */
 #endif
+  PRNGState prng;	/* PRNG state for the JIT compiler, defaults to prng in
+			   global_State. */
 } jit_State;
 
 #ifdef LUA_USE_ASSERT
