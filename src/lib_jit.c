@@ -150,13 +150,14 @@ LJLIB_CF(jit_attach)
 
 LJLIB_CF(jit_prngstate)
 {
+  int i;
   GCtab *cur = lj_tab_new(L, 8, 0);
 
 #if LJ_HASJIT
   jit_State *J = L2J(L);
 
   /* The old state. */
-  for (int i = 1; i <= 4; i++) {
+  for (i = 1; i <= 4; i++) {
     setintV(lj_tab_setint(L, cur, i*2-1), J->prng.u[i-1] & 0xffffffff);
     setintV(lj_tab_setint(L, cur, i*2), J->prng.u[i-1] >> 32);
   }
