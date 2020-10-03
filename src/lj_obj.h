@@ -634,10 +634,10 @@ typedef struct global_State {
   BCIns bc_cfunc_ext;	/* Bytecode for external C function calls. */
   GCRef cur_L;		/* Currently executing lua_State. */
   MRef jit_base;	/* Current JIT code L->base or NULL. */
-  MRef saved_jit_base;  /* saved jit_base for lj_err_throw */
   MRef ctype_state;	/* Pointer to C type state. */
   PRNGState prng;	/* Global PRNG state. */
   GCRef gcroot[GCROOT_MAX];  /* GC roots. */
+  MRef saved_jit_base;  /* saved jit_base for lj_err_throw */
 } global_State;
 
 #define mainthread(g)	(&gcref(g->mainthref)->th)
