@@ -2,7 +2,8 @@
 
 openresty/luajit2 - OpenResty's maintained branch of LuaJIT.
 
-# Table of Contents
+Table of Contents
+=================
 
 * [Name](#name)
 * [Description](#description)
@@ -14,15 +15,18 @@ openresty/luajit2 - OpenResty's maintained branch of LuaJIT.
         * [table.clone](#tableclone)
         * [jit.prngstate](#jitprngstate)
         * [thread.exdata](#threadexdata)
+    * [New C API](#new-c-api)
+        * [lua_setexdata](#lua_setexdata)
+        * [lua_getexdata](#lua_getexdata)
     * [New macros](#new-macros)
-        * [`OPENRESTY_LUAJIT`](#openresty-luajit)
+        * [`OPENRESTY_LUAJIT`](#openresty_luajit)
     * [Optimizations](#optimizations)
         * [Updated JIT default parameters](#updated-jit-default-parameters)
         * [String hashing](#string-hashing)
     * [Updated bytecode options](#updated-bytecode-options)
         * [New `-bL` option](#new--bl-option)
         * [Updated `-bl` option](#updated--bl-option)
-* [Miscellaneous](#miscellaneous)
+    * [Miscellaneous](#miscellaneous)
 * [Copyright & License](#copyright--license)
 
 # Description
@@ -197,9 +201,33 @@ strongly discouraged to use it yourself in the context of OpenResty.
 
 [Back to TOC](#table-of-contents)
 
+## New C API
+
+### lua_setexdata
+
+```C
+void lua_setexdata(lua_State *L, void *exdata);
+```
+
+Sets extra user data as a pointer value to the current Lua state or thread.
+
+[Back to TOC](#table-of-contents)
+
+### lua_getexdata
+
+```C
+void *lua_getexdata(lua_State *L);
+```
+
+Gets extra user data as a pointer value to the current Lua state or thread.
+
+[Back to TOC](#table-of-contents)
+
 ## New macros
 
 The macros described in this section have been added to this branch.
+
+[Back to TOC](#table-of-contents)
 
 ### `OPENRESTY_LUAJIT`
 
