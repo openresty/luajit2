@@ -112,6 +112,9 @@ LUA_API lua_State *(lua_newstate) (lua_Alloc f, void *ud);
 LUA_API void       (lua_close) (lua_State *L);
 LUA_API lua_State *(lua_newthread) (lua_State *L);
 
+#define HAVE_LUA_RESETTHREAD  1
+LUA_API void	   (lua_resetthread) (lua_State *L, lua_State *th);
+
 LUA_API lua_CFunction (lua_atpanic) (lua_State *L, lua_CFunction panicf);
 
 

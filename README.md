@@ -18,8 +18,10 @@ Table of Contents
     * [New C API](#new-c-api)
         * [lua_setexdata](#lua_setexdata)
         * [lua_getexdata](#lua_getexdata)
+        * [lua_resetthread](#lua_resetthread)
     * [New macros](#new-macros)
         * [`OPENRESTY_LUAJIT`](#openresty_luajit)
+        * [`HAVE_LUA_RESETTHREAD`](#have_lua_resetthread)
     * [Optimizations](#optimizations)
         * [Updated JIT default parameters](#updated-jit-default-parameters)
         * [String hashing](#string-hashing)
@@ -223,6 +225,22 @@ Gets extra user data as a pointer value to the current Lua state or thread.
 
 [Back to TOC](#table-of-contents)
 
+### lua_resetthread
+
+```C
+void lua_resetthread(lua_State *L, lua_State *th);
+```
+
+Resets the state of `th` to the initial state of a newly created Lua thread
+object as returned by `lua_newthread()`. This is mainly for Lua thread
+recycling. Lua threads in arbitrary states (like yielded or errored) can be
+reset properly.
+
+The current implementation does not shrink the already allocated Lua stack
+though. It only clears it.
+
+[Back to TOC](#table-of-contents)
+
 ## New macros
 
 The macros described in this section have been added to this branch.
@@ -233,6 +251,10 @@ The macros described in this section have been added to this branch.
 
 In the `luajit.h` header file, a new macro `OPENRESTY_LUAJIT` was defined to
 help distinguishing this OpenResty-specific branch of LuaJIT.
+
+### `HAVE_LUA_RESETTHREAD`
+
+This macro is set when the `lua_resetthread` C API is present.
 
 [Back to TOC](#table-of-contents)
 

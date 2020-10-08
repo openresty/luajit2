@@ -1187,6 +1187,35 @@ LUA_API int lua_isyieldable(lua_State *L)
   return cframe_canyield(L->cframe);
 }
 
+LUA_API void lua_resetthread(lua_State *L, lua_State *th)
+{
+  TValue *stend, *st;
+
+  th->dummy_ffid = FF_C;
+  th->status = LUA_OK;
+
+  setmrefr(th->glref, L->glref);
+  setgcrefr(th->env, L->env);
+
+  th->cframe = NULL;
+
+  st = tvref(th->stack);
+
+  if (st != NULL) {
+    lj_state_relimitstack(th);
+
+    stend = st + th->stacksize;
+    st++; /* Needed for curr_funcisL() on empty stack. */
+    if (LJ_FR2) st++;
+    th->base = th->top = st;
+    lj_func_closeuv(L, st);
+    while (st < stend)  /* Clear new slots. */
+      setnilV(st++);
+  }
+
+  th->exdata = L->exdata;
+}
+
 LUA_API int lua_yield(lua_State *L, int nresults)
 {
   void *cf = L->cframe;
