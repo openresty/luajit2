@@ -1214,6 +1214,7 @@ LUA_API void lua_resetthread(lua_State *L, lua_State *th)
   }
 
   th->exdata = L->exdata;
+  th->exdata2 = L->exdata2;
 }
 
 LUA_API int lua_yield(lua_State *L, int nresults)
