@@ -15,9 +15,12 @@ Table of Contents
         * [table.clone](#tableclone)
         * [jit.prngstate](#jitprngstate)
         * [thread.exdata](#threadexdata)
+        * [thread.exdata2](#threadexdata2)
     * [New C API](#new-c-api)
         * [lua_setexdata](#lua_setexdata)
         * [lua_getexdata](#lua_getexdata)
+        * [lua_setexdata2](#lua_setexdata2)
+        * [lua_getexdata2](#lua_getexdata2)
     * [New macros](#new-macros)
         * [`OPENRESTY_LUAJIT`](#openresty_luajit)
     * [Optimizations](#optimizations)
@@ -201,6 +204,14 @@ strongly discouraged to use it yourself in the context of OpenResty.
 
 [Back to TOC](#table-of-contents)
 
+### thread.exdata2
+
+**syntax:** *exdata = th_exdata2(data?)*
+
+Similar to `thread.exdata` but for a 2nd separate user data as a pointer value.
+
+[Back to TOC](#table-of-contents)
+
 ## New C API
 
 ### lua_setexdata
@@ -220,6 +231,26 @@ void *lua_getexdata(lua_State *L);
 ```
 
 Gets extra user data as a pointer value to the current Lua state or thread.
+
+[Back to TOC](#table-of-contents)
+
+### lua_setexdata2
+
+```C
+void lua_setexdata2(lua_State *L, void *exdata2);
+```
+
+Similar to `lua_setexdata` but for a 2nd user data (pointer) value.
+
+[Back to TOC](#table-of-contents)
+
+### lua_getexdata2
+
+```C
+void *lua_getexdata2(lua_State *L);
+```
+
+Similar to `lua_getexdata` but for a 2nd user data (pointer) value.
 
 [Back to TOC](#table-of-contents)
 

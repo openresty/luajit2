@@ -248,6 +248,9 @@ LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud);
 LUA_API void lua_setexdata(lua_State *L, void *exdata);
 LUA_API void *lua_getexdata(lua_State *L);
 
+#define HAVE_LUA_EXDATA2 1
+LUA_API void lua_setexdata2(lua_State *L, void *exdata2);
+LUA_API void *lua_getexdata2(lua_State *L);
 
 /*
 ** ===============================================================
