@@ -1134,6 +1134,19 @@ void LJ_FASTCALL recff_thread_exdata(jit_State *J, RecordFFData *rd)
   }
   recff_nyiu(J, rd);  /* this case is too rare to be interesting */
 }
+
+void LJ_FASTCALL recff_thread_exdata2(jit_State *J, RecordFFData *rd)
+{
+  TRef tr = J->base[0];
+  if (!tr) {
+    TRef trl = emitir(IRT(IR_LREF, IRT_THREAD), 0, 0);
+    TRef trp = emitir(IRT(IR_FLOAD, IRT_PTR), trl, IRFL_THREAD_EXDATA2);
+    TRef trid = lj_ir_kint(J, CTID_P_VOID);
+    J->base[0] = emitir(IRTG(IR_CNEWI, IRT_CDATA), trid, trp);
+    return;
+  }
+  recff_nyiu(J, rd);  /* this case is too rare to be interesting */
+}
 #endif
 
 /* -- I/O library fast functions ------------------------------------------ */

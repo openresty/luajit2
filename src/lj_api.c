@@ -1341,3 +1341,13 @@ LUA_API void *lua_getexdata(lua_State *L)
 {
   return L->exdata;
 }
+
+LUA_API void lua_setexdata2(lua_State *L, void *exdata2)
+{
+  L->exdata2 = exdata2;
+}
+
+LUA_API void *lua_getexdata2(lua_State *L)
+{
+  return L->exdata2;
+}
