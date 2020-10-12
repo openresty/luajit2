@@ -315,7 +315,9 @@ local function formatk(tr, idx, sn)
   local tn = type(k)
   local s
   if tn == "number" then
-    if band(sn or 0, 0x30000) ~= 0 then
+    if t < 12 then
+      s = k == 0 and "NULL" or format("[0x%08x]", k)
+    elseif band(sn or 0, 0x30000) ~= 0 then
       s = band(sn, 0x20000) ~= 0 and "contpc" or "ftsz"
     elseif k == 2^52+2^51 then
       s = "bias"
@@ -615,7 +617,7 @@ local function dump_texit(tr, ex, ngpr, nfpr, ...)
   out:write("---- TRACE ", tr, " exit ", ex, "\n")
   if dumpmode.X then
     local regs = {...}
-    if jit.arch == "x64" then
+    if jit.arch:sub(-2) == "64" then
       for i=1,ngpr do
 	out:write(format(" %016x", regs[i]))
 	if i % 4 == 0 then out:write("\n") end

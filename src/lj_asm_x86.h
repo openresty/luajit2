@@ -2300,7 +2300,7 @@ static void asm_bitshift(ASMState *as, IRIns *ir, x86Shift xs, x86Op xv)
     dest = ra_dest(as, ir, rset_exclude(RSET_GPR, RID_ECX));
     if (dest == RID_ECX) {
       dest = ra_scratch(as, rset_exclude(RSET_GPR, RID_ECX));
-      emit_rr(as, XO_MOV, RID_ECX, dest);
+      emit_rr(as, XO_MOV, REX_64IR(ir, RID_ECX), dest);
     }
     right = irr->r;
     if (ra_noreg(right))
@@ -3072,6 +3072,7 @@ void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno, MCode *target)
   MSize len = T->szmcode;
   MCode *px = exitstub_addr(J, exitno) - 6;
   MCode *pe = p+len-6;
+  MCode *pgc = NULL;
 #if LJ_GC64
   uint32_t statei = (uint32_t)(GG_OFS(g.vmstate) - GG_OFS(dispatch));
 #else
@@ -3086,9 +3087,15 @@ void lj_asm_patchexit(jit_State *J, GCtrace *T, ExitNo exitno, MCode *target)
       break;
   }
   lj_assertJ(p < pe, "instruction length decoder failed");
-  for (; p < pe; p += asm_x86_inslen(p))
-    if ((*(uint16_t *)p & 0xf0ff) == 0x800f && p + *(int32_t *)(p+2) == px)
+  for (; p < pe; p += asm_x86_inslen(p)) {
+    if ((*(uint16_t *)p & 0xf0ff) == 0x800f && p + *(int32_t *)(p+2) == px &&
+	p != pgc) {
       *(int32_t *)(p+2) = jmprel(J, p+6, target);
+    } else if (*p == XI_CALL &&
+	      (void *)(p+5+*(int32_t *)(p+1)) == (void *)lj_gc_step_jit) {
+      pgc = p+7;  /* Do not patch GC check exit. */
+    }
+  }
   lj_mcode_sync(T->mcode, T->mcode + T->szmcode);
   lj_mcode_patch(J, mcarea, 1);
 }
