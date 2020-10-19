@@ -157,7 +157,7 @@ Usage:
 
 ```lua
 local state = jit.prngstate()
-local oldstate = jit.prngstate({123456})
+local oldstate = jit.prngstate({423,432,432,423,56,867,35,5347})
 ```
 
 **Note:** This API has no effect if LuaJIT is compiled with
