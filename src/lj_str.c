@@ -12,7 +12,6 @@
 #include "lj_str.h"
 #include "lj_char.h"
 #include "lj_prng.h"
-#include "x64/src/lj_str_hash_x64.h"
 
 /* -- String helpers ------------------------------------------------------ */
 
@@ -83,9 +82,22 @@ int lj_str_haspattern(GCstr *s)
 
 /* -- String hashing ------------------------------------------------------ */
 
-#ifndef ARCH_HASH_SPARSE
+#ifdef LJ_HAS_OPTIMISED_HASH
+static StrHash hash_sparse_def (uint64_t, const char *, MSize);
+str_sparse_hashfn hash_sparse = hash_sparse_def;
+#if LUAJIT_SECURITY_STRHASH
+static StrHash hash_dense_def(uint64_t, StrHash, const char *, MSize);
+str_dense_hashfn hash_dense = hash_dense_def;
+#endif
+#else
+#define hash_sparse hash_sparse_def
+#if LUAJIT_SECURITY_STRHASH
+#define hash_dense hash_dense_def
+#endif
+#endif
+
 /* Keyed sparse ARX string hash. Constant time. */
-static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
+static StrHash hash_sparse_def(uint64_t seed, const char *str, MSize len)
 {
   /* Constants taken from lookup3 hash by Bob Jenkins. */
   StrHash a, b, h = len ^ (StrHash)seed;
@@ -106,12 +118,11 @@ static StrHash hash_sparse(uint64_t seed, const char *str, MSize len)
   h ^= b; h -= lj_rol(b, 16);
   return h;
 }
-#endif
 
-#if LUAJIT_SECURITY_STRHASH && !defined(ARCH_HASH_DENSE)
+#if LUAJIT_SECURITY_STRHASH
 /* Keyed dense ARX string hash. Linear time. */
-static LJ_NOINLINE StrHash hash_dense(uint64_t seed, StrHash h,
-				      const char *str, MSize len)
+static LJ_NOINLINE StrHash hash_dense_def(uint64_t seed, StrHash h,
+					  const char *str, MSize len)
 {
   StrHash b = lj_bswap(lj_rol(h ^ (StrHash)(seed >> 32), 4));
   if (len > 12) {

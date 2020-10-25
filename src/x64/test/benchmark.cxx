@@ -1,7 +1,10 @@
 #include <sys/time.h> // for gettimeofday()
 extern "C" {
 #define LUAJIT_SECURITY_STRHASH 1
-#include "lj_str_hash_x64.h"
+#include "../../lj_str.h"
+str_sparse_hashfn hash_sparse;
+str_dense_hashfn hash_dense;
+#include "../../lj_str_hash.c"
 }
 #include <string>
 #include <vector>
@@ -97,7 +100,7 @@ struct TestFuncWasSparse
 struct TestFuncIsSparse
 {
   uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
-    return hash_sparse(seed, buf, len);
+    return hash_sparse_sse42(seed, buf, len);
   }
 };
 
@@ -111,7 +114,7 @@ struct TestFuncWasDense
 struct TestFuncIsDense
 {
   uint32_t operator()(uint64_t seed, const char* buf, uint32_t len) {
-    return hash_dense(seed, 42, buf, len);
+    return hash_dense_sse42(seed, 42, buf, len);
   }
 };
 
@@ -268,9 +271,9 @@ benchmarkConflictHelper(uint64_t seed, uint32_t bucketNum,
   for (vector<string>::const_iterator i = strs.begin(), e = strs.end();
        i != e; ++i) {
     uint32_t h1 = original_hash_sparse(seed, i->c_str(), i->size());
-    uint32_t h2 = hash_sparse(seed, i->c_str(), i->size());
+    uint32_t h2 = hash_sparse_sse42(seed, i->c_str(), i->size());
     uint32_t h3 = original_hash_dense(seed, h1, i->c_str(), i->size());
-    uint32_t h4 = hash_dense(seed, h2, i->c_str(), i->size());
+    uint32_t h4 = hash_dense_sse42(seed, h2, i->c_str(), i->size());
 
     conflictWasSparse[h1 & mask]++;
     conflictIsSparse[h2 & mask]++;

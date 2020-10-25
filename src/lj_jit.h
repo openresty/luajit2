@@ -22,6 +22,7 @@
 #define JIT_F_SSE3		(JIT_F_CPU << 0)
 #define JIT_F_SSE4_1		(JIT_F_CPU << 1)
 #define JIT_F_BMI2		(JIT_F_CPU << 2)
+#define JIT_F_SSE4_2		(JIT_F_CPU << 3)
 
 
 #define JIT_F_CPUSTRING		"\4SSE3\6SSE4.1\4BMI2"
