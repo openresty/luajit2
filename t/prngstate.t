@@ -32,7 +32,7 @@ print_array(jit.prngstate({423,432,432,423,56,867,35,5347,452}))
 423 432 432 423 56 867 35 5347
 --- jv
 --- err
-bad argument #1 to 'prngstate' (PRNG state must be an array with up to 8 integers)
+bad argument #1 to 'prngstate' (PRNG state must be an array with up to 8 integers or an integer)
 --- exit: 1
 
 
@@ -50,3 +50,27 @@ ok
 --- jv
 --- err eval
 qr/trace too short at jit\.prngstate/
+
+
+
+=== TEST 3: PRNG state can be an integer
+--- lua
+function print_array(a)
+  local out = a[1]
+  for i=2,#a do
+    out = out.." "..tostring(a[i])
+  end
+  print(out)
+end
+
+jit.prngstate(0)
+print_array(jit.prngstate(30))
+print_array(jit.prngstate(32))
+print_array(jit.prngstate(4294967296)) -- 2 ** 32
+--- out
+0 0 0 0 0 0 0 0
+30 0 0 0 0 0 0 0
+--- jv
+--- err
+bad argument #1 to 'prngstate' (PRNG state must be an array with up to 8 integers or an integer)
+--- exit: 1
