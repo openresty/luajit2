@@ -53,7 +53,7 @@ qr/trace too short at jit\.prngstate/
 
 
 
-=== TEST 3: PRNG state can be integer
+=== TEST 3: PRNG state can be an integer
 --- lua
 function print_array(a)
   local out = a[1]
