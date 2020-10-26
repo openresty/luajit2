@@ -164,28 +164,38 @@ LJLIB_CF(jit_prngstate)
 
   /* We need to set new state using the input array. */
   if (L->base < L->top && !tvisnil(L->base)) {
-    GCtab *t = lj_lib_checktab(L, 1);
     PRNGState prng;
-    int i = 1, len = lj_tab_len(t);
+    if (tvisnumber(L->base)) {
+      TValue *o = L->base;
 
-    /* The input array must have at most 8 elements. */
-    if (len > 8)
-      lj_err_arg(L, 1, LJ_ERR_PRNGSTATE);
-
-    for (i = 1; i <= len; i++) {
-      cTValue *v = lj_tab_getint(t, i);
-
-      if (!tvisint(v) && (!tvisnum(v) || (double)(uint32_t)numV(v) != numV(v)))
+      if (!tvisint(o) && ((double)(uint32_t)numV(o) != numV(o)))
         lj_err_arg(L, 1, LJ_ERR_PRNGSTATE);
 
-      if (i & 1)
-	prng.u[(i-1)/2] = numberVint(v);
-      else
-	prng.u[(i-1)/2] = prng.u[(i-1)/2] | ((uint64_t)numberVint(v) << 32);
-    }
+      prng.u[0] = numberVint(o);
+      for (i = 1; i < 4; i++)
+        prng.u[i] = 0;
+    } else {
+      GCtab *t = lj_lib_checktab(L, 1);
+      int i = 1, len = lj_tab_len(t);
 
-    for (i /= 2; i < 4; i++)
-      prng.u[i] = 0;
+      /* The input array must have at most 8 elements. */
+      if (len > 8)
+        lj_err_arg(L, 1, LJ_ERR_PRNGSTATE);
+
+      for (i = 1; i <= len; i++) {
+        cTValue *v = lj_tab_getint(t, i);
+
+        if (!tvisint(v) && (!tvisnum(v) || (double)(uint32_t)numV(v) != numV(v)))
+          lj_err_arg(L, 1, LJ_ERR_PRNGSTATE);
+
+        if (i & 1)
+          prng.u[(i-1)/2] = numberVint(v);
+        else
+          prng.u[(i-1)/2] = prng.u[(i-1)/2] | ((uint64_t)numberVint(v) << 32);
+      }
+      for (i /= 2; i < 4; i++)
+        prng.u[i] = 0;
+    }
 
     /* Re-initialize the JIT prng. */
     J->prng = prng;
