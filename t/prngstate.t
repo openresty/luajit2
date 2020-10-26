@@ -66,7 +66,7 @@ end
 jit.prngstate(0)
 print_array(jit.prngstate(30))
 print_array(jit.prngstate(32))
-print_array(jit.prngstate(4294967296))
+print_array(jit.prngstate(4294967296)) -- 2 ** 32
 --- out
 0 0 0 0 0 0 0 0
 30 0 0 0 0 0 0 0
