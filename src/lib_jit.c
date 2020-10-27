@@ -150,10 +150,10 @@ LJLIB_CF(jit_attach)
 
 LJLIB_CF(jit_prngstate)
 {
-  int i;
   GCtab *cur = lj_tab_new(L, 8, 0);
 
 #if LJ_HASJIT
+  int i;
   jit_State *J = L2J(L);
 
   /* The old state. */
