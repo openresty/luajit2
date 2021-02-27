@@ -1,6 +1,6 @@
 |// Low-level VM code for x86 CPUs.
 |// Bytecode interpreter, fast functions and helper functions.
-|// Copyright (C) 2005-2020 Mike Pall. See Copyright Notice in luajit.h
+|// Copyright (C) 2005-2021 Mike Pall. See Copyright Notice in luajit.h
 |
 |.if P64
 |.arch x64
@@ -1372,7 +1372,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov LFUNC:RB, [RA-8]
   |  add NARGS:RD, 1
   |  // This is fragile. L->base must not move, KBASE must always be defined.
+  |.if x64
+  |  cmp KBASEa, rdx			// Continue with CALLT if flag set.
+  |.else
   |  cmp KBASE, BASE			// Continue with CALLT if flag set.
+  |.endif
   |  je ->BC_CALLT_Z
   |  mov BASE, RA
   |  ins_call				// Otherwise call resolved metamethod.
