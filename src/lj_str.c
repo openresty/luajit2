@@ -308,8 +308,8 @@ static GCstr *lj_str_alloc(lua_State *L, const char *str, MSize len,
   s->hash = hash;
 
 #ifdef LUAJIT_TEST_FIXED_ORDER
-  /* If you need predictable key iteration order in lua tables
-   * (eg: in data driven test), build with
+  /* If you need predictable key iteration order in lua tables (eg: in data driven test),
+   * build with
    * "XCFLAGS=-DLUAJIT_TEST_FIXED_ORDER=1 -DLUAJIT_SECURITY_STRID=0
    * -DLUAJIT_SECURITY_STRHASH=0 -DLUAJIT_SECURITY_PRNG=0 -DLUAJIT_SECURITY_MCODE=0"
    *
