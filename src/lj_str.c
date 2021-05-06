@@ -306,10 +306,18 @@ static GCstr *lj_str_alloc(lua_State *L, const char *str, MSize len,
   s->gct = ~LJ_TSTR;
   s->len = len;
   s->hash = hash;
-#ifndef STRID_RESEED_INTERVAL
-  /* s->sid = g->str.id++; */
-  /* if use g->str.id++ as sid, the order of the tab will be indeterminate. */
+
+#ifdef LUAJIT_TEST_FIXED_ORDER
+  /* If you need fixed order of lua table(eg: in data driven test), build with
+   * "XCFLAGS=-DLUAJIT_TEST_FIXED_ORDER=1 -DLUAJIT_SECURITY_STRID=0
+   * -DLUAJIT_SECURITY_STRHASH=0 -DLUAJIT_SECURITY_PRNG=0 -DLUAJIT_SECURITY_MCODE=0"
+   *
+   * This is for test only. Please don't use it in distribution build.
+   */
   s->sid = hash;
+#else
+#ifndef STRID_RESEED_INTERVAL
+  s->sid = g->str.id++;
 #elif STRID_RESEED_INTERVAL
   if (!g->str.idreseed--) {
     uint64_t r = lj_prng_u64(&g->prng);
@@ -319,6 +327,7 @@ static GCstr *lj_str_alloc(lua_State *L, const char *str, MSize len,
   s->sid = g->str.id++;
 #else
   s->sid = (StrID)lj_prng_u64(&g->prng);
+#endif
 #endif
   s->reserved = 0;
   s->hashalg = (uint8_t)hashalg;
