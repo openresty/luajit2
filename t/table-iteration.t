@@ -20,16 +20,19 @@ if val % 2 == 1 then
 end
 
 local t2 = {A=1, B= 2, C= 3, D= 4, E= 5}
+local ret = ""
+local first = true
 for k, v in pairs(t2)
 do
-    print(k, "=", v)
+    if not first then
+        ret = ret .. " "
+    end
+    first = false
+    ret = ret .. k .. "=" .. v
 end
+print(ret)
 
 --- jv
 --- out
-C	=	3
-B	=	2
-D	=	4
-A	=	1
-E	=	5
+C=3 B=2 D=4 A=1 E=5
 --- err
