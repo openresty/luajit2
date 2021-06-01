@@ -21,6 +21,10 @@
 #include "lj_trace.h"
 #include "lj_vm.h"
 
+#if LJ_ARCH_PPC_ELFV2
+#include "lualib.h"
+#endif
+
 /* -- Target-specific handling of callback slots -------------------------- */
 
 #define CALLBACK_MCODE_SIZE	(LJ_PAGESIZE * LJ_NUM_CBPAGE)
