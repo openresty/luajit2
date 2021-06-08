@@ -124,8 +124,8 @@
   \
   /* Buffer operations. */ \
   _(BUFHDR,	L , ref, lit) \
-  _(BUFPUT,	L , ref, ref) \
-  _(BUFSTR,	A , ref, ref) \
+  _(BUFPUT,	LW, ref, ref) \
+  _(BUFSTR,	AW, ref, ref) \
   \
   /* Barriers. */ \
   _(TBAR,	S , ref, ___) \
@@ -139,9 +139,9 @@
   _(STRTO,	N , ref, ___) \
   \
   /* Calls. */ \
-  _(CALLN,	N , ref, lit) \
-  _(CALLA,	A , ref, lit) \
-  _(CALLL,	L , ref, lit) \
+  _(CALLN,	NW, ref, lit) \
+  _(CALLA,	AW, ref, lit) \
+  _(CALLL,	LW, ref, lit) \
   _(CALLS,	S , ref, lit) \
   _(CALLXS,	S , ref, ref) \
   _(CARG,	N , ref, ref) \
@@ -206,6 +206,7 @@ IRFPMDEF(FPMENUM)
   _(UDATA_META,	offsetof(GCudata, metatable)) \
   _(UDATA_UDTYPE, offsetof(GCudata, udtype)) \
   _(UDATA_FILE,	sizeof(GCudata)) \
+  _(UDATA_BUF_R, sizeof(GCudata) + offsetof(SBufExt, r)) \
   _(CDATA_CTYPEID, offsetof(GCcdata, ctypeid)) \
   _(CDATA_PTR,	sizeof(GCcdata)) \
   _(CDATA_INT, sizeof(GCcdata)) \

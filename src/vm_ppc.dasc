@@ -2687,7 +2687,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  stw L, SBUF:CARG1->L
   |  stp BASE, L->base
   |  stw PC, SAVE_PC
-  |   stw TMP0, SBUF:CARG1->p
+  |   stw TMP0, SBUF:CARG1->w
   |  bl extern lj_buf_putstr_ .. name
   |  bl extern lj_buf_tostr
   |  b ->fff_resstr
@@ -3311,8 +3311,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  bctr
   |
   |9:  // Rethrow error from the right C frame.
+  |  neg CARG2, CARG1
   |  mr CARG1, L
-  |  bl extern lj_err_run		// (lua_State *L)
+  |  bl extern lj_err_trace		// (lua_State *L, int errcode)
   |.endif
   |
   |//-----------------------------------------------------------------------
@@ -4496,8 +4497,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.macro addo32., y, a, b
     |  // Need to check overflow for (a<<32) + (b<<32).
     |  rldicr TMP0, a, 32, 31
-    |  rldicr TMP3, b, 32, 31
-    |  addo. TMP0, TMP0, TMP3
+    |  rldicr TMP1, b, 32, 31
+    |  addo. TMP0, TMP0, TMP1
     |  add y, a, b
     |.endmacro
     |  ins_arith addo32., fadd, __adddf3
@@ -4510,8 +4511,8 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |.macro subo32., y, a, b
     |  // Need to check overflow for (a<<32) - (b<<32).
     |  rldicr TMP0, a, 32, 31
-    |  rldicr TMP3, b, 32, 31
-    |  subo. TMP0, TMP0, TMP3
+    |  rldicr TMP1, b, 32, 31
+    |  subo. TMP0, TMP0, TMP1
     |  sub y, a, b
     |.endmacro
     |  ins_arith subo32., fsub, __subdf3

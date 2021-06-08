@@ -1810,7 +1810,7 @@ static void build_subroutines(BuildCtx *ctx)
   |   str BASE, L->base
   |   str PC, SAVE_PC
   |   str L, SBUF:CARG1->L
-  |  str CARG4, SBUF:CARG1->p
+  |  str CARG4, SBUF:CARG1->w
   |  bl extern lj_buf_putstr_ .. name
   |  bl extern lj_buf_tostr
   |  b ->fff_resstr
@@ -2245,8 +2245,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  b <2
   |
   |9:  // Rethrow error from the right C frame.
+  |  rsb CARG2, CARG1, #0
   |  mov CARG1, L
-  |  bl extern lj_err_run		// (lua_State *L)
+  |  bl extern lj_err_trace		// (lua_State *L, int errcode)
   |.endif
   |
   |//-----------------------------------------------------------------------
