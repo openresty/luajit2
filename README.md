@@ -88,7 +88,7 @@ Usage:
 local isarray = require "table.isarray"
 
 print(isarray{"a", true, 3.14})  -- true
-print(isarray{"dog" = 3})  -- false
+print(isarray{dog = 3})  -- false
 print(isarray{})  -- true
 ```
 
