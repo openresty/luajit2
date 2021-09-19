@@ -185,6 +185,7 @@ ERRDEF(FFI_NOTLOAD,	"ffi module not loaded (yet)")
 
 #if LJ_HASBUFFER
 /* String buffer errors. */
+ERRDEF(BUFFER_SELF,	"cannot put buffer into itself")
 ERRDEF(BUFFER_BADOPT,	"bad options table")
 ERRDEF(BUFFER_BADENC,	"cannot serialize " LUA_QS)
 ERRDEF(BUFFER_BADDEC,	"cannot deserialize tag 0x%02x")

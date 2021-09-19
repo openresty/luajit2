@@ -61,7 +61,7 @@ LJLIB_CF(buffer_method_free)
   return 1;
 }
 
-LJLIB_CF(buffer_method_reset)
+LJLIB_CF(buffer_method_reset)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   lj_bufx_reset(sbx);
@@ -69,7 +69,7 @@ LJLIB_CF(buffer_method_reset)
   return 1;
 }
 
-LJLIB_CF(buffer_method_skip)
+LJLIB_CF(buffer_method_skip)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   MSize n = (MSize)lj_lib_checkintrange(L, 2, 0, LJ_MAX_BUF);
@@ -83,7 +83,7 @@ LJLIB_CF(buffer_method_skip)
   return 1;
 }
 
-LJLIB_CF(buffer_method_set)
+LJLIB_CF(buffer_method_set)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   GCobj *ref;
@@ -111,7 +111,7 @@ LJLIB_CF(buffer_method_set)
   return 1;
 }
 
-LJLIB_CF(buffer_method_put)
+LJLIB_CF(buffer_method_put)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobufw(L);
   ptrdiff_t arg, narg = L->top - L->base;
@@ -126,6 +126,7 @@ LJLIB_CF(buffer_method_put)
       lj_strfmt_putfnum((SBuf *)sbx, STRFMT_G14, numV(o));
     } else if (tvisbuf(o)) {
       SBufExt *sbx2 = bufV(o);
+      if (sbx2 == sbx) lj_err_arg(L, arg+1, LJ_ERR_BUFFER_SELF);
       lj_buf_putmem((SBuf *)sbx, sbx2->r, sbufxlen(sbx2));
     } else if (!mo && !tvisnil(mo = lj_meta_lookup(L, o, MM_tostring))) {
       /* Call __tostring metamethod inline. */
@@ -146,7 +147,7 @@ LJLIB_CF(buffer_method_put)
   return 1;
 }
 
-LJLIB_CF(buffer_method_putf)
+LJLIB_CF(buffer_method_putf)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobufw(L);
   lj_strfmt_putarg(L, (SBuf *)sbx, 2, 2);
@@ -155,7 +156,7 @@ LJLIB_CF(buffer_method_putf)
   return 1;
 }
 
-LJLIB_CF(buffer_method_get)
+LJLIB_CF(buffer_method_get)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   ptrdiff_t arg, narg = L->top - L->base;
@@ -178,7 +179,7 @@ LJLIB_CF(buffer_method_get)
 }
 
 #if LJ_HASFFI
-LJLIB_CF(buffer_method_putcdata)
+LJLIB_CF(buffer_method_putcdata)	LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobufw(L);
   const char *p;
@@ -196,12 +197,12 @@ LJLIB_CF(buffer_method_putcdata)
   return 1;
 }
 
-LJLIB_CF(buffer_method_reserve)
+LJLIB_CF(buffer_method_reserve)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobufw(L);
-  MSize len = (MSize)lj_lib_checkintrange(L, 2, 0, LJ_MAX_BUF);
+  MSize sz = (MSize)lj_lib_checkintrange(L, 2, 0, LJ_MAX_BUF);
   GCcdata *cd;
-  lj_buf_more((SBuf *)sbx, len);
+  lj_buf_more((SBuf *)sbx, sz);
   ctype_loadffi(L);
   cd = lj_cdata_new_(L, CTID_P_UINT8, CTSIZE_PTR);
   *(void **)cdataptr(cd) = sbx->w;
@@ -210,7 +211,7 @@ LJLIB_CF(buffer_method_reserve)
   return 2;
 }
 
-LJLIB_CF(buffer_method_commit)
+LJLIB_CF(buffer_method_commit)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   MSize len = (MSize)lj_lib_checkintrange(L, 2, 0, LJ_MAX_BUF);
@@ -220,7 +221,7 @@ LJLIB_CF(buffer_method_commit)
   return 1;
 }
 
-LJLIB_CF(buffer_method_ref)
+LJLIB_CF(buffer_method_ref)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   GCcdata *cd;
@@ -233,7 +234,7 @@ LJLIB_CF(buffer_method_ref)
 }
 #endif
 
-LJLIB_CF(buffer_method_encode)
+LJLIB_CF(buffer_method_encode)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobufw(L);
   cTValue *o = lj_lib_checkany(L, 2);
@@ -243,11 +244,11 @@ LJLIB_CF(buffer_method_encode)
   return 1;
 }
 
-LJLIB_CF(buffer_method_decode)
+LJLIB_CF(buffer_method_decode)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobufw(L);
   setnilV(L->top++);
-  lj_serialize_get(sbx, L->top-1);
+  sbx->r = lj_serialize_get(sbx, L->top-1);
   lj_gc_check(L);
   return 1;
 }
@@ -259,7 +260,7 @@ LJLIB_CF(buffer_method___gc)
   return 0;
 }
 
-LJLIB_CF(buffer_method___tostring)
+LJLIB_CF(buffer_method___tostring)	LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   setstrV(L, L->top-1, lj_str_new(L, sbx->r, sbufxlen(sbx)));
@@ -267,7 +268,7 @@ LJLIB_CF(buffer_method___tostring)
   return 1;
 }
 
-LJLIB_CF(buffer_method___len)
+LJLIB_CF(buffer_method___len)		LJLIB_REC(.)
 {
   SBufExt *sbx = buffer_tobuf(L);
   setintV(L->top-1, (int32_t)sbufxlen(sbx));
@@ -287,7 +288,7 @@ LJLIB_CF(buffer_new)
 {
   MSize sz = 0;
   int targ = 1;
-  GCtab *env, *dict = NULL;
+  GCtab *env, *dict_str = NULL, *dict_mt = NULL;
   GCudata *ud;
   SBufExt *sbx;
   if (L->base < L->top && !tvistab(L->base)) {
@@ -297,10 +298,16 @@ LJLIB_CF(buffer_new)
   }
   if (L->base+targ-1 < L->top) {
     GCtab *options = lj_lib_checktab(L, targ);
-    cTValue *opt_dict = lj_tab_getstr(options, lj_str_newlit(L, "dict"));
+    cTValue *opt_dict, *opt_mt;
+    opt_dict = lj_tab_getstr(options, lj_str_newlit(L, "dict"));
     if (opt_dict && tvistab(opt_dict)) {
-      dict = tabV(opt_dict);
-      lj_serialize_dict_prep(L, dict);
+      dict_str = tabV(opt_dict);
+      lj_serialize_dict_prep_str(L, dict_str);
+    }
+    opt_mt = lj_tab_getstr(options, lj_str_newlit(L, "metatable"));
+    if (opt_mt && tvistab(opt_mt)) {
+      dict_mt = tabV(opt_mt);
+      lj_serialize_dict_prep_mt(L, dict_mt);
     }
   }
   env = tabref(curr_func(L)->c.env);
@@ -311,34 +318,25 @@ LJLIB_CF(buffer_new)
   setudataV(L, L->top++, ud);
   sbx = (SBufExt *)uddata(ud);
   lj_bufx_init(L, sbx);
-  setgcref(sbx->dict, obj2gco(dict));
+  setgcref(sbx->dict_str, obj2gco(dict_str));
+  setgcref(sbx->dict_mt, obj2gco(dict_mt));
   if (sz > 0) lj_buf_need2((SBuf *)sbx, sz);
   return 1;
 }
 
-LJLIB_CF(buffer_encode)
+LJLIB_CF(buffer_encode)			LJLIB_REC(.)
 {
   cTValue *o = lj_lib_checkany(L, 1);
-  SBufExt sbx;
-  memset(&sbx, 0, sizeof(SBufExt));
-  lj_bufx_set_borrow(L, &sbx, &G(L)->tmpbuf);
-  lj_serialize_put(&sbx, o);
-  setstrV(L, L->top++, lj_buf_str(L, (SBuf *)&sbx));
+  setstrV(L, L->top++, lj_serialize_encode(L, o));
   lj_gc_check(L);
   return 1;
 }
 
-LJLIB_CF(buffer_decode)
+LJLIB_CF(buffer_decode)			LJLIB_REC(.)
 {
   GCstr *str = lj_lib_checkstrx(L, 1);
-  SBufExt sbx;
-  memset(&sbx, 0, sizeof(SBufExt));
-  lj_bufx_set_cow(L, &sbx, strdata(str), str->len);
-  /* No need to set sbx.cowref here. */
   setnilV(L->top++);
-  lj_serialize_get(&sbx, L->top-1);
-  lj_gc_check(L);
-  if (sbx.r != sbx.w) lj_err_caller(L, LJ_ERR_BUFFER_LEFTOV);
+  lj_serialize_decode(L, L->top-1, str);
   return 1;
 }
 
