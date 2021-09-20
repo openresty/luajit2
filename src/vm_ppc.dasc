@@ -977,10 +977,8 @@ static void build_subroutines(BuildCtx *ctx)
   |.if FFI
   |  cmplwi TMP0, 1
   |.endif
-  |     lwz PC, FRAME_CONTPC(RB)	// Restore PC from [cont|PC].
-  |  addi BASEP4, BASE, 4
-  |   addi TMP2, RD, WORD_HI-8
-  |    lwz TMP1, LFUNC:TMP1->pc
+  |     lwz PC, -16(RB)			// Restore PC from [cont|PC].
+  |   subi TMP2, RD, 8
   |   stwx TISNIL, RA, TMP2		// Ensure one valid arg.
   |.if P64
   |   ld TMP3, 0(DISPATCH)
@@ -988,9 +986,7 @@ static void build_subroutines(BuildCtx *ctx)
   |.if FFI
   |  ble >1
   |.endif
-  |.if P64
-  |  add TMP0, TMP0, TMP3
-  |.endif
+  |    lwz TMP1, LFUNC:TMP1->pc
   |    lwz KBASE, PC2PROTO(k)(TMP1)
   |  // BASE = base, RA = resultptr, RB = meta base
   |  mtctr TMP0
