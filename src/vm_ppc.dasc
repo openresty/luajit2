@@ -5683,6 +5683,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  stb TMP0, -1(PC)
     |  .endif
     |    addis PC, TMP3, -(BCBIAS_J*4 >> 16)
+    |  .if ENDIAN_LE
+    |   stb TMP1, 0(PC)
+    |  .else
     |  // NYI on big-endian: unpatch JLOOP.
     |   stb TMP1, 3(PC)
     |  .endif
