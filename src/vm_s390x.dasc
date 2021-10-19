@@ -1793,7 +1793,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  stg BASE, L:RB->base
   |   lg RC, SBUF:CARG1->b
   |   stg L:RB, SBUF:CARG1->L
-  |   stg RC, SBUF:CARG1->p
+  |   stg RC, SBUF:CARG1->w
   |  stg PC, SAVE_PC
   |  brasl r14, extern lj_buf_putstr_ .. name
   |  // lgr CARG1, CRET1 (nop, CARG1==CRET1)
