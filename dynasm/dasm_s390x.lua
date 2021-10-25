@@ -637,7 +637,6 @@ map_op = {
   basr_2 =	"000000000d00RR",
   bassm_2 =	"000000000c00RR",
   bc_2 =	"000047000000RX-b",
-  bc_2 =	"000047000000RX-b",
   bcr_2 =	"000000000700RR",
   bct_2 =	"000046000000RX-a",
   bctg_2 =	"e30000000046RXY-a",
@@ -646,7 +645,6 @@ map_op = {
   bras_2 =	"0000a7050000RI-b",
   brasl_2 =	"c00500000000RIL-b",
   brc_2 =	"0000a7040000RI-c",
-  brcl_2 =	"c00400000000RIL-c",
   brcl_2 =	"c00400000000RIL-c",
   brct_2 =	"0000a7060000RI-b",
   brctg_2 =	"0000a7070000RI-b",
@@ -1348,7 +1346,7 @@ local function parse_template(params, template, nparams, pos)
       op2 = op2 + shl(b, 12) + d
     end
     wputhw(op1); wputhw(op2)
-    if a then a() end 
+    if a then a() end
   elseif p == "RS-b" then
     local m = parse_mask(params[2])
     local d, b, a = parse_mem_b(params[3])
@@ -1436,7 +1434,7 @@ local function parse_template(params, template, nparams, pos)
     op1 = op1 + shl(b, 12) + band(d, 0xfff)
     op2 = op2 + band(shr(d, 4), 0xff00)
     wputhw(op1); wputhw(op2)
-    if a then a() end 
+    if a then a() end
   elseif p == "SS-a" then
     local d1, l1, b1, d1a, l1a = parse_mem_lb(params[1])
     local d2, b2, d2a = parse_mem_b(params[2])
