@@ -547,7 +547,7 @@ static void LJ_FASTCALL recff_next(jit_State *J, RecordFFData *rd)
     ix.keyv.u32.lo = lj_tab_keyindex(tabV(&ix.tabv), keyv);
     /* Omit the value, if not used by the caller. */
     ix.idxchain = (J->framedepth && frame_islua(J->L->base-1) &&
-		   bc_b(frame_pc(J->L->base-1)[-1]) <= 2);
+		   bc_b(frame_pc(J->L->base-1)[-1])-1 < 2);
     ix.mobj = 0;  /* We don't need the next index. */
     rd->nres = lj_record_next(J, &ix);
     J->base[0] = ix.key;
@@ -1124,6 +1124,7 @@ static TRef recff_sbufx_check(jit_State *J, RecordFFData *rd, int arg)
   if (!tvisbuf(&rd->argv[arg])) lj_trace_err(J, LJ_TRERR_BADTYPE);
   trtype = emitir(IRT(IR_FLOAD, IRT_U8), ud, IRFL_UDATA_UDTYPE);
   emitir(IRTGI(IR_EQ), trtype, lj_ir_kint(J, UDTYPE_BUFFER));
+  J->needsnap = 1;
   return ud;
 }
 
