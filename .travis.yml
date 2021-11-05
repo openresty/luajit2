@@ -9,6 +9,7 @@ os: linux
 arch:
   - amd64
   - arm64
+  - s390x
 
 language: c
 
@@ -42,7 +43,7 @@ env:
   matrix:
   - LUAJIT_XCFLAGS="$LUAJIT_COMMON_XCFLAGS"
   - LUAJIT_XCFLAGS="-DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1
-  - LUAJIT_XCFLAGS="-DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC -DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1 FLAGS=-v
+  - LUAJIT_XCFLAGS="-DLUAJIT_USE_VALGRIND -DLUAJIT_USE_SYSMALLOC -DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1 FLAGS=$( [ ${TRAVIS_CPU_ARCH} != "s390x" ] && echo '-v' )
   - LUAJIT_XCFLAGS="-DLUAJIT_DISABLE_GC64 -DLUAJIT_ENABLE_LUA52COMPAT $LUAJIT_COMMON_XCFLAGS" LUA52=1
 
 install:
@@ -55,6 +56,6 @@ script:
   - cd ../luajit2
   - make -j$JOBS CCDEBUG=-g Q= PREFIX=$LUAJIT_PREFIX CC=$CC XCFLAGS="$LUAJIT_XCFLAGS" > build.log 2>&1 || (cat build.log && exit 1)
   - sudo make install PREFIX=$LUAJIT_PREFIX > build.log 2>&1 || (cat build.log && exit 1)
-  - if [ ${TRAVIS_CPU_ARCH} != "arm64" ]; then PATH=/opt/luajit21/bin:$PATH prove -I. t; fi
+  - if [ ${TRAVIS_CPU_ARCH} == "amd64" ]; then PATH=/opt/luajit21/bin:$PATH prove -I. t; fi
   - cd ../luajit2-test-suite
   - ./run-tests -j $JOBS $FLAGS $LUAJIT_PREFIX
