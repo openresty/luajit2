@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------
 -- LuaJIT module to save/list bytecode.
 --
--- Copyright (C) 2005-2021 Mike Pall. All rights reserved.
+-- Copyright (C) 2005-2022 Mike Pall. All rights reserved.
 -- Released under the MIT license. See Copyright Notice in luajit.h
 ----------------------------------------------------------------------------
 --
@@ -59,6 +59,11 @@ end
 local function savefile(name, mode)
   if name == "-" then return io.stdout end
   return check(io.open(name, mode))
+end
+
+local function set_stdout_binary(ffi)
+  ffi.cdef[[int _setmode(int fd, int mode);]]
+  ffi.C._setmode(1, 0x8000)
 end
 
 ------------------------------------------------------------------------------
@@ -126,6 +131,11 @@ local function bcsave_tail(fp, output, s)
 end
 
 local function bcsave_raw(output, s)
+  if output == "-" and jit.os == "Windows" then
+    local ok, ffi = pcall(require, "ffi")
+    check(ok, "FFI library required to write binary file to stdout")
+    set_stdout_binary(ffi)
+  end
   local fp = savefile(output, "wb")
   bcsave_tail(fp, output, s)
 end
@@ -569,6 +579,9 @@ end
 local function bcsave_obj(ctx, output, s)
   local ok, ffi = pcall(require, "ffi")
   check(ok, "FFI library required to write this file type")
+  if output == "-" and jit.os == "Windows" then
+    set_stdout_binary(ffi)
+  end
   if ctx.os == "windows" then
     return bcsave_peobj(ctx, output, s, ffi)
   elseif ctx.os == "osx" then

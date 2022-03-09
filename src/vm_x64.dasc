@@ -1,6 +1,6 @@
 |// Low-level VM code for x64 CPUs in LJ_GC64 mode.
 |// Bytecode interpreter, fast functions and helper functions.
-|// Copyright (C) 2005-2021 Mike Pall. See Copyright Notice in luajit.h
+|// Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
 |
 |.arch x64
 |.section code_op, code_sub
@@ -2590,41 +2590,6 @@ static void build_subroutines(BuildCtx *ctx)
   |  mulsd xmm1, xmm0
   |  movaps xmm0, xmm5
   |  subsd xmm0, xmm1
-  |  ret
-  |
-  |// Args in xmm0/eax. Ret in xmm0. xmm0-xmm1 and eax modified.
-  |->vm_powi_sse:
-  |  cmp eax, 1; jle >6			// i<=1?
-  |  // Now 1 < (unsigned)i <= 0x80000000.
-  |1:  // Handle leading zeros.
-  |  test eax, 1; jnz >2
-  |  mulsd xmm0, xmm0
-  |  shr eax, 1
-  |  jmp <1
-  |2:
-  |  shr eax, 1; jz >5
-  |  movaps xmm1, xmm0
-  |3:  // Handle trailing bits.
-  |  mulsd xmm0, xmm0
-  |  shr eax, 1; jz >4
-  |  jnc <3
-  |  mulsd xmm1, xmm0
-  |  jmp <3
-  |4:
-  |  mulsd xmm0, xmm1
-  |5:
-  |  ret
-  |6:
-  |  je <5				// x^1 ==> x
-  |  jb >7				// x^0 ==> 1
-  |  neg eax
-  |  call <1
-  |  sseconst_1 xmm1, RD
-  |  divsd xmm1, xmm0
-  |  movaps xmm0, xmm1
-  |  ret
-  |7:
-  |  sseconst_1 xmm0, RD
   |  ret
   |
   |//-----------------------------------------------------------------------
