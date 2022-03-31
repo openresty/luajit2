@@ -626,3 +626,9 @@ LUALIB_API int luaopen_package(lua_State *L)
   return 1;
 }
 
+LUALIB_API double lj_ffi_get_key_sentinel(void)
+{
+    TValue tv;
+    tv.u64 = KEY_SENTINEL;
+    return tv.n;
+}
