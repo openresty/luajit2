@@ -1448,16 +1448,16 @@ static TRef rec_idx_key(jit_State *J, RecordIndex *ix, IRRef *rbref,
     key = emitir(IRTN(IR_CONV), key, IRCONV_NUM_INT);
   if (tref_isk(key)) {
     /* Optimize lookup of constant hash keys. */
-    MSize hslot = (MSize)((char *)ix->oldv - (char *)&noderef(t->node)[0].val);
-    if (t->hmask > 0 && hslot <= t->hmask*(MSize)sizeof(Node) &&
-	hslot <= 65535*(MSize)sizeof(Node)) {
+    GCSize hslot = (GCSize)((char *)ix->oldv-(char *)&noderef(t->node)[0].val);
+    if (hslot <= t->hmask*(GCSize)sizeof(Node) &&
+	hslot <= 65535*(GCSize)sizeof(Node)) {
       TRef node, kslot, hm;
       *rbref = J->cur.nins;  /* Mark possible rollback point. */
       *rbguard = J->guardemit;
       hm = emitir(IRTI(IR_FLOAD), ix->tab, IRFL_TAB_HMASK);
       emitir(IRTGI(IR_EQ), hm, lj_ir_kint(J, (int32_t)t->hmask));
       node = emitir(IRT(IR_FLOAD, IRT_PGC), ix->tab, IRFL_TAB_NODE);
-      kslot = lj_ir_kslot(J, key, hslot / sizeof(Node));
+      kslot = lj_ir_kslot(J, key, (IRRef)(hslot / sizeof(Node)));
       return emitir(IRTG(IR_HREFK, IRT_PGC), node, kslot);
     }
   }
@@ -2043,7 +2043,7 @@ static TRef rec_tnew(jit_State *J, uint32_t ah)
 static TRef rec_cat(jit_State *J, BCReg baseslot, BCReg topslot)
 {
   TRef *top = &J->base[topslot];
-  TValue savetv[5];
+  TValue savetv[5+LJ_FR2];
   BCReg s;
   RecordIndex ix;
   lj_assertJ(baseslot < topslot, "bad CAT arg");
@@ -2233,6 +2233,7 @@ void lj_record_ins(jit_State *J)
   case BCMpri: setpriV(rcv, ~rc); ix.key = rc = TREF_PRI(IRT_NIL+rc); break;
   case BCMnum: { cTValue *tv = proto_knumtv(J->pt, rc);
     copyTV(J->L, rcv, tv); ix.key = rc = tvisint(tv) ? lj_ir_kint(J, intV(tv)) :
+    tv->u32.hi == LJ_KEYINDEX ? (lj_ir_kint(J, 0) | TREF_KEYINDEX) :
     lj_ir_knumint(J, numV(tv)); } break;
   case BCMstr: { GCstr *s = gco2str(proto_kgc(J->pt, ~(ptrdiff_t)rc));
     setstrV(J->L, rcv, s); ix.key = rc = lj_ir_kstr(J, s); } break;
