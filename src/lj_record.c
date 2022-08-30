@@ -664,12 +664,17 @@ static LoopEvent rec_itern(jit_State *J, BCReg ra, BCReg rb)
   RecordIndex ix;
   /* Since ITERN is recorded at the start, we need our own loop detection. */
   if (J->pc == J->startpc &&
-      (J->cur.nins > REF_FIRST+1 ||
-       (J->cur.nins == REF_FIRST+1 && J->cur.ir[REF_FIRST].o != IR_PROF)) &&
       J->framedepth + J->retdepth == 0 && J->parent == 0 && J->exitno == 0) {
-    J->instunroll = 0;  /* Cannot continue unrolling across an ITERN. */
-    lj_record_stop(J, LJ_TRLINK_LOOP, J->cur.traceno);  /* Looping trace. */
-    return LOOPEV_ENTER;
+    IRRef ref = REF_FIRST + LJ_HASPROFILE;
+#ifdef LUAJIT_ENABLE_CHECKHOOK
+    ref += 3;
+#endif
+    if (J->cur.nins > ref ||
+       (LJ_HASPROFILE && J->cur.nins == ref && J->cur.ir[ref-1].o != IR_PROF)) {
+      J->instunroll = 0;  /* Cannot continue unrolling across an ITERN. */
+      lj_record_stop(J, LJ_TRLINK_LOOP, J->cur.traceno);  /* Looping trace. */
+      return LOOPEV_ENTER;
+    }
   }
   J->maxslot = ra;
   lj_snap_add(J);  /* Required to make JLOOP the first ins in a side-trace. */
@@ -1956,7 +1961,7 @@ static void rec_varg(jit_State *J, BCReg dst, ptrdiff_t nresults)
 	  emitir(IRTGI(IR_EQ), fr,
 		 lj_ir_kint(J, (int32_t)frame_ftsz(J->L->base-1)));
 	vbase = emitir(IRT(IR_SUB, IRT_IGC), REF_BASE, fr);
-	vbase = emitir(IRT(IR_ADD, IRT_PGC), vbase, lj_ir_kint(J, frofs-8));
+	vbase = emitir(IRT(IR_ADD, IRT_PGC), vbase, lj_ir_kint(J, frofs-8*(1+LJ_FR2)));
 	for (i = 0; i < nload; i++) {
 	  IRType t = itype2irt(&J->L->base[i-1-LJ_FR2-nvararg]);
 	  J->base[dst+i] = lj_record_vload(J, vbase, i, t);
@@ -2660,6 +2665,8 @@ static const BCIns *rec_setup_root(jit_State *J)
     J->bc_min = pc;
     break;
   case BC_ITERL:
+    if (bc_op(pc[-1]) == BC_JLOOP)
+      lj_trace_err(J, LJ_TRERR_LINNER);
     lj_assertJ(bc_op(pc[-1]) == BC_ITERC, "no ITERC before ITERL");
     J->maxslot = ra + bc_b(pc[-1]) - 1;
     J->bc_extent = (MSize)(-bc_j(ins))*sizeof(BCIns);
