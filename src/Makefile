@@ -53,6 +53,7 @@ CCOPT_arm=
 CCOPT_arm64=
 CCOPT_ppc=
 CCOPT_mips=
+CCOPT_loongarch64= -fwrapv
 #
 #CCDEBUG=
 # Uncomment the next line to generate debug information:
@@ -271,7 +272,12 @@ ifneq (,$(findstring LJ_TARGET_MIPS ,$(TARGET_TESTARCH)))
     TARGET_LJARCH= mips
   endif
 else
+ifneq (,$(findstring LJ_TARGET_LOONGARCH64 ,$(TARGET_TESTARCH)))
+  TARGET_ARCH= -DLJ_ARCH_ENDIAN=LUAJIT_LE
+  TARGET_LJARCH= loongarch64
+else
   $(error Unsupported target architecture)
+endif
 endif
 endif
 endif
