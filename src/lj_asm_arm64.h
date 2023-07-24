@@ -938,7 +938,7 @@ static void asm_hrefk(ASMState *as, IRIns *ir)
   IRIns *irkey = IR(kslot->op1);
   int32_t ofs = (int32_t)(kslot->op2 * sizeof(Node));
   int32_t kofs = ofs + (int32_t)offsetof(Node, key);
-  int bigofs = !emit_checkofs(A64I_LDRx, ofs);
+  int bigofs = !emit_checkofs(A64I_LDRx, kofs);
   Reg dest = (ra_used(ir) || bigofs) ? ra_dest(as, ir, RSET_GPR) : RID_NONE;
   Reg node = ra_alloc1(as, ir->op1, RSET_GPR);
   Reg key, idx = node;
@@ -1970,7 +1970,7 @@ static void asm_head_root_base(ASMState *as)
 }
 
 /* Coalesce BASE register for a side trace. */
-static RegSet asm_head_side_base(ASMState *as, IRIns *irp, RegSet allow)
+static Reg asm_head_side_base(ASMState *as, IRIns *irp)
 {
   IRIns *ir;
   asm_head_lreg(as);
@@ -1989,16 +1989,15 @@ static RegSet asm_head_side_base(ASMState *as, IRIns *irp, RegSet allow)
   if (ra_hasreg(ir->r) && (rset_test(as->modset, ir->r) || irt_ismarked(ir->t)))
     ra_spill(as, ir);
   if (ra_hasspill(irp->s)) {
-    rset_clear(allow, ra_dest(as, ir, allow));
+    return ra_dest(as, ir, RSET_GPR);
   } else {
     Reg r = irp->r;
     lj_assertA(ra_hasreg(r), "base reg lost");
-    rset_clear(allow, r);
     if (r != ir->r && !rset_test(as->freeset, r))
       ra_restore(as, regcost_ref(as->cost[r]));
     ra_destreg(as, ir, r);
+    return r;
   }
-  return allow;
 }
 
 /* -- Tail of trace ------------------------------------------------------- */
