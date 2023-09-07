@@ -1,6 +1,6 @@
 /*
 ** DynASM ARM64 encoding engine.
-** Copyright (C) 2005-2022 Mike Pall. All rights reserved.
+** Copyright (C) 2005-2023 Mike Pall. All rights reserved.
 ** Released under the MIT license. See dynasm.lua for full copyright notice.
 */
 
@@ -144,6 +144,7 @@ void dasm_setup(Dst_DECL, const void *actionlist)
   if (D->pclabels) memset((void *)D->pclabels, 0, D->pcsize);
   for (i = 0; i < D->maxsection; i++) {
     D->sections[i].pos = DASM_SEC2POS(i);
+    D->sections[i].rbuf = D->sections[i].buf - D->sections[i].pos;
     D->sections[i].ofs = 0;
   }
 }
