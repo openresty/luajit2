@@ -1,6 +1,6 @@
 /*
 ** FFI library.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2023 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lib_ffi_c
@@ -744,6 +744,9 @@ LJLIB_CF(ffi_abi)	LJLIB_REC(.)
 #endif
 #if LJ_ABI_WIN
     "\003win"
+#endif
+#if LJ_ABI_PAUTH
+    "\007pauth"
 #endif
 #if LJ_TARGET_UWP
     "\003uwp"

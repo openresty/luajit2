@@ -1,6 +1,6 @@
 /*
 ** Target architecture selection.
-** Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2023 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #ifndef _LJ_ARCH_H
@@ -266,6 +266,9 @@
 #else
 #define LJ_ARCH_NAME		"arm64"
 #define LJ_ARCH_ENDIAN		LUAJIT_LE
+#endif
+#if !defined(LJ_ABI_PAUTH) && defined(__arm64e__)
+#define LJ_ABI_PAUTH		1
 #endif
 #define LJ_TARGET_ARM64		1
 #define LJ_TARGET_EHRETREG	0
@@ -629,6 +632,10 @@
 #endif
 #define LJ_SOFTFP		(!LJ_ARCH_HASFPU)
 #define LJ_SOFTFP32		(LJ_SOFTFP && LJ_32)
+
+#ifndef LJ_ABI_PAUTH
+#define LJ_ABI_PAUTH		0
+#endif
 
 #if LJ_ARCH_ENDIAN == LUAJIT_BE
 #define LJ_LE			0
