@@ -977,11 +977,16 @@ static void build_subroutines(BuildCtx *ctx)
   |.if FFI
   |  cmplwi TMP0, 1
   |.endif
+  |.if P64
   |// PC value corrected to avoid segfault
   |   lwz PC, FRAME_CONTPC(RB)        // Restore PC from [cont|PC].
   |	addi BASEP4, BASE, 4 
   |	addi TMP2, RD, WORD_HI-8
   |	lwz TMP1, LFUNC:TMP1->pc
+  |.else
+  |     lwz PC, -16(RB)			// Restore PC from [cont|PC].
+  |   subi TMP2, RD, 8
+  |.endif
   |   stwx TISNIL, RA, TMP2		// Ensure one valid arg.
   |.if P64
   |   ld TMP3, 0(DISPATCH)
@@ -991,6 +996,8 @@ static void build_subroutines(BuildCtx *ctx)
   |.endif
   |.if P64
   |  add TMP0, TMP0, TMP3
+  |.else
+  |    lwz TMP1, LFUNC:TMP1->pc
   |.endif
   |    lwz KBASE, PC2PROTO(k)(TMP1)
   |  // BASE = base, RA = resultptr, RB = meta base
@@ -1720,6 +1727,7 @@ static void build_subroutines(BuildCtx *ctx)
   |
   |//-- Base library: iterators -------------------------------------------
   |
+  |.if P64
   |.ffunc next
   |  cmplwi NARGS8:RC, 8
   |    lwz TAB:CARG1, WORD_LO(BASE)
@@ -1737,6 +1745,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  la CARG3, -8(BASE)
   |   stw PC, SAVE_PC
   |  bl extern lj_tab_next      // (GCtab *t, cTValue *key,TValue *o)
+  |.else
+  |.ffunc_1 next
+  |   stwx TISNIL, BASE, NARGS8:RC	// Set missing 2nd arg to nil.
+  |  checktab CARG3
+  |   lwz PC, FRAME_PC(BASE)
+  |  bne ->fff_fallback
+  |  la CARG2, 8(BASE)
+  |  la CARG3, -8(BASE)
+  |  bl extern lj_tab_next		// (GCtab *t, cTValue *key, TValue *o)
+  |.endif
   |  // Returns 1=found, 0=end, -1=error.
   |  cmpwi CRET1, 0
   |   la RA, -8(BASE)
@@ -5681,10 +5699,17 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  crand 4*cr0+eq, 4*cr0+eq, 4*cr7+eq
     |    add TMP3, PC, TMP0
     |  bne cr0, >5
+    |.if P64
     |  lus TMP1, 0xfffe
     |  ori TMP1, TMP1, 0x7fff
     |  stw ZERO, WORD_LO-8(RA)          // Initialize control var.
     |  stw TMP1, WORD_HI-8(RA)
+    |.else
+    |  lus TMP1, (LJ_KEYINDEX >> 16)
+    |  ori TMP1, TMP1, (LJ_KEYINDEX & 0xffff)
+    |  stw ZERO, -4(RA)			// Initialize control var.
+    |  stw TMP1, -8(RA)
+    |.endif
     |    addis PC, TMP3, -(BCBIAS_J*4 >> 16)
     |1:
     |  ins_next
