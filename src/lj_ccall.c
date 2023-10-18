@@ -1393,9 +1393,8 @@ int lj_ccall_func(lua_State *L, GCcdata *cd)
     ct = ctype_rawchild(cts, ct);
   }
   if (ctype_isfunc(ct->info)) {
-    CCallState cc;
+    CCallState cc = {0};
     int gcsteps, ret;
-    memset(&cc, 0, sizeof(CCallState));
     cc.func = (void (*)(void))cdata_getptr(cdataptr(cd), sz);
     gcsteps = ccall_set_args(L, cts, ct, &cc);
     ct = (CType *)((intptr_t)ct-(intptr_t)cts->tab);
