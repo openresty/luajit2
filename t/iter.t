@@ -32,6 +32,7 @@ qr#\Q[TRACE   1 test.lua:3 loop]
 \E)?#ms
 
 
+
 === TEST 2: explicit next() in loops
 --- jv
 --- lua
