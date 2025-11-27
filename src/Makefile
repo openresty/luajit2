@@ -52,6 +52,8 @@ CCOPT_arm=
 CCOPT_arm64=
 CCOPT_ppc=
 CCOPT_mips=
+CCOPT_riscv64=
+CCOPT_loongarch64= -fwrapv
 #
 #CCDEBUG=
 # Uncomment the next line to generate debug information:
@@ -246,6 +248,10 @@ else
 ifneq (,$(findstring LJ_TARGET_S390X ,$(TARGET_TESTARCH)))
   TARGET_LJARCH= s390x
 else
+ifneq (,$(findstring LJ_TARGET_LOONGARCH64 ,$(TARGET_TESTARCH)))
+  TARGET_ARCH= -DLJ_ARCH_ENDIAN=LUAJIT_LE
+  TARGET_LJARCH= loongarch64
+else
 ifneq (,$(findstring LJ_TARGET_ARM64 ,$(TARGET_TESTARCH)))
   ifneq (,$(findstring __AARCH64EB__ ,$(TARGET_TESTARCH)))
     TARGET_ARCH= -D__AARCH64EB__=1
@@ -270,7 +276,12 @@ ifneq (,$(findstring LJ_TARGET_MIPS ,$(TARGET_TESTARCH)))
     TARGET_LJARCH= mips
   endif
 else
+ifneq (,$(findstring LJ_TARGET_RISCV64 ,$(TARGET_TESTARCH)))
+    TARGET_LJARCH= riscv64
+else
   $(error Unsupported target architecture)
+endif
+endif
 endif
 endif
 endif
@@ -347,7 +358,9 @@ else
     # Find out whether the target toolchain always generates unwind tables.
     TARGET_TESTUNWIND=$(shell exec 2>/dev/null; echo 'extern void b(void);int a(void){b();return 0;}' | $(TARGET_CC) -c -x c - -o tmpunwind.o && { grep -qa -e eh_frame -e __unwind_info tmpunwind.o || grep -qU -e eh_frame -e __unwind_info tmpunwind.o; } && echo E; rm -f tmpunwind.o)
     ifneq (,$(findstring E,$(TARGET_TESTUNWIND)))
-      TARGET_XCFLAGS+= -DLUAJIT_UNWIND_EXTERNAL
+      ifeq (,$(findstring LJ_TARGET_LOONGARCH64 ,$(TARGET_TESTARCH)))
+        TARGET_XCFLAGS+= -DLUAJIT_UNWIND_EXTERNAL
+      endif
     endif
   endif
   ifneq (SunOS,$(TARGET_SYS))
@@ -497,6 +510,9 @@ ifeq (ppc,$(TARGET_LJARCH))
   ifneq (,$(findstring LJ_ARCH_PPC_ELFV2 1,$(TARGET_TESTARCH)))
     DASM_AFLAGS+= -D ELFV2
   endif
+endif
+ifneq (,$(findstring LJ_TARGET_RISCV64 ,$(TARGET_TESTARCH)))
+  DASM_AFLAGS+= -D RISCV64
 endif
 endif
 endif
