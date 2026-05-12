@@ -29,6 +29,9 @@
 #include "lj_lex.h"
 #include "lj_alloc.h"
 #include "luajit.h"
+#ifdef LUAJIT_USE_SDT
+#include <sys/sdt.h>
+#endif
 
 /* -- Stack handling ------------------------------------------------------ */
 
@@ -303,6 +306,16 @@ LUA_API lua_State *lua_newstate(lua_Alloc allocf, void *allocd)
   g->gc.pause = LUAI_GCPAUSE;
   g->gc.stepmul = LUAI_GCMUL;
   lj_dispatch_init((GG_State *)L);
+#if defined(LUAJIT_USE_SDT) && LJ_HASJIT
+  /* Static ABI-offset note read by external profilers (e.g. otel-ebpf-profiler).
+  ** Arg order is load-bearing: extend by appending a new probe name
+  ** (e.g. luajit:offsets_v2), never by reordering this one. */
+  STAP_PROBE4(luajit, offsets,
+              (int)offsetof(global_State, cur_L),
+              GG_G2DISP,
+              GG_G2J + (int)offsetof(jit_State, trace),
+              CFRAME_SIZE_JIT);
+#endif
   L->status = LUA_ERRERR+1;  /* Avoid touching the stack upon memory error. */
   if (lj_vm_cpcall(L, NULL, NULL, cpluaopen) != 0) {
     /* Memory allocation error: free partial state. */
