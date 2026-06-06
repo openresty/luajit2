@@ -416,7 +416,7 @@ static char *serialize_get(char *r, SBufExt *sbx, TValue *o)
   } else if (tp >= SER_TAG_INT64 &&  tp <= SER_TAG_COMPLEX) {
     uint32_t sz = tp == SER_TAG_COMPLEX ? 16 : 8;
     GCcdata *cd;
-    if (LJ_UNLIKELY(r + sz > w)) goto eob;
+    if (LJ_UNLIKELY(sz > (uint32_t)(w - r))) goto eob;
     if (LJ_UNLIKELY(!ctype_ctsG(G(sbufL(sbx))))) goto badtag;
     cd = lj_cdata_new_(sbufL(sbx),
 	   tp == SER_TAG_INT64 ? CTID_INT64 :
