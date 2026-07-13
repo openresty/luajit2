@@ -358,6 +358,48 @@ static void LJ_FASTCALL recff_select(jit_State *J, RecordFFData *rd)
   }  /* else: Interpreter will throw. */
 }
 
+/* unpack(t, [i, [j]]) */
+static void LJ_FASTCALL recff_unpack(jit_State *J, RecordFFData *rd)
+{
+  TRef trtab = J->base[0];
+  TRef tri = J->base[1];
+  TRef trj = J->base[2];
+  RecordIndex ix;
+  GCtab *t;
+  int32_t i, e, k;
+  if (!tref_istab(trtab)) return;  /* Interpreter will throw. */
+  t = tabV(&rd->argv[0]);
+  if (tref_isnil(tri)) i = 1;
+  else {
+    i = argv2int(J, &rd->argv[1]);
+    if (tref_isk(tri))
+      emitir(IRTGI(IR_EQ), tri, lj_ir_kint(J, i));
+  }
+  if (!tref_isnil(trj)) {  /* trj set guarantees tri was too. */
+    e = argv2int(J, &rd->argv[2]);
+    if (!tref_isk(trj))
+      emitir(IRTGI(IR_EQ), trj, lj_ir_kint(J, e));
+  } else {  /* Guard the length, since it wasn't given as a constant. */
+    TRef trlen = emitir(IRTI(IR_ALEN), trtab, TREF_NIL);
+    e = (int32_t)lj_tab_len(t);
+    emitir(IRTGI(IR_EQ), trlen, lj_ir_kint(J, e));
+  }
+  if (i > e) { rd->nres = 0; return; }
+  int32_t maxn = LJ_MAX_JSLOTS - (int32_t)J->baseslot;
+  uint32_t span = (uint32_t)e - (uint32_t)i;  /* n - 1, exact and signed overflow-free. */
+  if (maxn <= 0 || span >= (uint32_t)maxn)
+    lj_trace_err_info(J, LJ_TRERR_STACKOV);
+  int32_t n = (int32_t)span + 1;  /* safe: span < maxn <= LJ_MAX_JSLOTS here. */
+  ix.tab = trtab; ix.idxchain = 0; ix.val = 0;
+  settabV(J->L, &ix.tabv, t);
+  rd->nres = n;
+  for (k = 0; k < n; k++) {
+    ix.key = lj_ir_kint(J, i + k);
+    setintV(&ix.keyv, i + k);
+    J->base[k] = lj_record_idx(J, &ix);
+  }
+}
+
 static void LJ_FASTCALL recff_tonumber(jit_State *J, RecordFFData *rd)
 {
   TRef tr = J->base[0];
