@@ -407,14 +407,15 @@ static void build_subroutines(BuildCtx *ctx)
   |  j <3
   |
   |->vm_unwind_yield:
-  |  lghi CRET1, LUA_YIELD
+  |  lghi RB, LUA_YIELD
   |  j ->vm_unwind_c_eh
   |
   |->vm_unwind_c:			// Unwind C stack, return from vm_pcall.
   |  // (void *cframe, int errcode)
   |  lgr sp, CARG1
-  |  lgfr CARG2, CRET1			// Error return status for vm_pcall.
+  |  lgfr RB, CARG2			// Error return status for vm_pcall.
   |->vm_unwind_c_eh:			// Landing pad for external unwinder.
+  |  lgr CRET1, RB			// Move return status into ABI reg.
   |  lg L:RB, SAVE_L
   |  lg GL:RB, L:RB->glref
   |  lghi TMPR1, ~LJ_VMST_C
