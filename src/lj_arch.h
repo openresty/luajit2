@@ -33,6 +33,8 @@
 #define LUAJIT_ARCH_mips64	7
 #define LUAJIT_ARCH_S390X	8
 #define LUAJIT_ARCH_s390x	8
+#define LUAJIT_ARCH_RISCV64	9
+#define LUAJIT_ARCH_riscv64	9
 
 /* Target OS. */
 #define LUAJIT_OS_OTHER		0
@@ -69,6 +71,8 @@
 #define LUAJIT_TARGET	LUAJIT_ARCH_MIPS64
 #elif defined(__mips__) || defined(__mips) || defined(__MIPS__) || defined(__MIPS)
 #define LUAJIT_TARGET	LUAJIT_ARCH_MIPS32
+#elif (defined(__riscv) || defined(__riscv__)) && __riscv_xlen == 64
+#define LUAJIT_TARGET LUAJIT_ARCH_RISCV64
 #else
 #error "Architecture not supported (in this version), see: https://luajit.org/status.html#architectures"
 #endif
@@ -508,6 +512,20 @@
 #define LJ_ARCH_NUMMODE		LJ_NUMMODE_DUAL
 #define LJ_TARGET_GC64		1
 #define LJ_ARCH_NOJIT		1	/* NYI */
+#elif LUAJIT_TARGET == LUAJIT_ARCH_RISCV64
+
+#define LJ_ARCH_NAME		"riscv64"
+#define LJ_ARCH_BITS		64
+#define LJ_ARCH_ENDIAN		LUAJIT_LE	/* Forget about BE for now */
+#define LJ_TARGET_RISCV64	1
+#define LJ_TARGET_GC64		1
+#define LJ_TARGET_EHRETREG	10
+#define LJ_TARGET_EHRAREG	1
+#define LJ_TARGET_JUMPRANGE	30	/* JAL +-2^20 = +-1MB,\
+        AUIPC+JALR +-2^31 = +-2GB, leave 1 bit to avoid AUIPC corner case */
+#define LJ_TARGET_MASKSHIFT	1
+#define LJ_TARGET_MASKROT	1
+#define LJ_ARCH_NUMMODE		LJ_NUMMODE_DUAL
 
 #else
 #error "No target architecture defined"
@@ -591,6 +609,10 @@
 /* MIPS32ON64 aka n32 ABI support might be desirable, but difficult. */
 #error "Only n64 ABI supported for MIPS64"
 #undef LJ_TARGET_MIPS
+#endif
+#elif LJ_TARGET_RISCV64
+#if !defined(__riscv_float_abi_double)
+#error "Only RISC-V 64 double float supported for now"
 #endif
 #endif
 #endif
