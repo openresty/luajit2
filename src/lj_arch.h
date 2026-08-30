@@ -56,7 +56,11 @@
 #if defined(__i386) || defined(__i386__) || defined(_M_IX86)
 #define LUAJIT_TARGET	LUAJIT_ARCH_X86
 #elif defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+#ifdef _M_ARM64EC
+#define LUAJIT_TARGET	LUAJIT_ARCH_ARM64
+#else
 #define LUAJIT_TARGET	LUAJIT_ARCH_X64
+#endif
 #elif defined(__arm__) || defined(__arm) || defined(__ARM__) || defined(__ARM)
 #define LUAJIT_TARGET	LUAJIT_ARCH_ARM
 #elif defined(__aarch64__) || defined(_M_ARM64)
@@ -295,6 +299,13 @@
 #endif
 #if !defined(LJ_ABI_PAUTH) && defined(__arm64e__)
 #define LJ_ABI_PAUTH		1
+#endif
+#if !defined(LJ_ABI_ARM64EC)
+#if defined(_M_ARM64EC)
+#define LJ_ABI_ARM64EC		1
+#else
+#define LJ_ABI_ARM64EC		0
+#endif
 #endif
 #if !defined(LJ_ABI_BRANCH_TRACK) && (__ARM_FEATURE_BTI_DEFAULT & 1) && \
     defined(LUAJIT_ENABLE_CET_BR)
@@ -726,12 +737,20 @@
 #if LJ_TARGET_WINDOWS
 #if LJ_TARGET_UWP
 #define LJ_WIN_VALLOC	VirtualAllocFromApp
+#define LJ_WIN_VALLOC2	VirtualAlloc2FromApp
 #define LJ_WIN_VPROTECT	VirtualProtectFromApp
 extern void *LJ_WIN_LOADLIBA(const char *path);
 #else
 #define LJ_WIN_VALLOC	VirtualAlloc
+#define LJ_WIN_VALLOC2	VirtualAlloc2
 #define LJ_WIN_VPROTECT	VirtualProtect
 #define LJ_WIN_LOADLIBA(path)	LoadLibraryExA((path), NULL, 0)
+#endif
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+extern void *LJ_WIN_VALLOC_CODE(void *hint, size_t sz, unsigned atype,
+				unsigned prot);
+#else
+#define LJ_WIN_VALLOC_CODE LJ_WIN_VALLOC
 #endif
 #endif
 

@@ -478,6 +478,9 @@ LJLIB_CF(jit_util_ircalladdr)
   uint32_t idx = (uint32_t)lj_lib_checkint(L, 1);
   if (idx < IRCALL__MAX) {
     ASMFunction func = lj_ir_callinfo[idx].func;
+  #if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+      if (func) (void)lj_vm_arm64ec_is_x64(G(L), &func);
+  #endif
     setintptrV(L->top-1, (intptr_t)(void *)lj_ptr_strip(func));
     return 1;
   }

@@ -24,6 +24,11 @@
 |// v0-v7 temp, v8-v15 callee-saved (only d8-d15 preserved), v16-v31 temp
 |//
 |// x0-x7/v0-v7 hold parameters and results.
+|//
+|// ARM64EC adds extra restrictions:
+|// x13, x14, x23, x24, x28 are not available.
+|// v16-v31 are not available.
+|// Entry stubs need to preserve q6-q15.
 |
 |// Fixed register assignments for the interpreter.
 |
@@ -32,20 +37,36 @@
 |.define KBASE,		x20	// Constants of current Lua function.
 |.define PC,		x21	// Next PC.
 |.define GLREG,		x22	// Global state.
+|.if ARM64EC
+|.define TISNUMhi,	x25	// Constant LJ_TISNUM << 15.
+|.define TISNUMhiw,	w25
+|.define TISNIL,	d15	// Constant -1LL (in an FPR).
+|.define LREG,		x26	// Register holding lua_State (also in SAVE_L).
+|.else
 |.define LREG,		x23	// Register holding lua_State (also in SAVE_L).
 |.define TISNUM,	x24	// Constant LJ_TISNUM << 47.
 |.define TISNUMhi,	x25	// Constant LJ_TISNUM << 15.
 |.define TISNIL,	x26	// Constant -1LL.
+|.endif
 |.define fp,		x29	// Yes, we have to maintain a frame pointer.
 |
+|.if ARM64EC
+|.define ST_INTERP,	s15	// Constant -1 (in an FPR).
+|.else
 |.define ST_INTERP,	w26	// Constant -1.
+|.endif
 |
 |// The following temporaries are not saved across C calls, except for RA/RC.
 |.define RA,		x27
+|.if ARM64EC
+|.define RC,		x12	// ARM64EC: RC not saved across C calls!
+|.define RCw,		w12
+|.else
 |.define RC,		x28
+|.define RCw,		w28
+|.endif
 |.define RB,		x17
 |.define RAw,		w27
-|.define RCw,		w28
 |.define RBw,		w17
 |.define INS,		x16
 |.define INSw,		w16
@@ -117,9 +138,17 @@
 |.define SAVE_ERRF,	[sp, #36]
 |.define SAVE_MULTRES,	[sp, #32]
 |.define TMPD,		[sp, #24]	// 64 bit values
+|.if ARM64EC
+|// Leave 32 bytes of home space at bottom for outgoing x64 FUNCCW calls.
+|// But get to use the save slots for x23/x24/x28 instead.
+|.define SAVE_L,	[sp, # SAVE_GPR_+(27-23)*8]
+|.define SAVE_PC,	[sp, # SAVE_GPR_+(27-23)*8+8]
+|.define SAVE_CFRAME,	[sp, # SAVE_GPR_+(27-27)*8+8]
+|.else
 |.define SAVE_L,	[sp, #16]
 |.define SAVE_PC,	[sp, #8]
 |.define SAVE_CFRAME,	[sp, #0]
+|.endif
 |//----- 16 byte aligned, <-- sp while in interpreter.
 |
 |.define TMPDofs,	#24
@@ -150,11 +179,21 @@
 |
 |.macro save_, gpr1, gpr2, fpr1, fpr2
 |  stp_unwind d..fpr1, d..fpr2, [sp, # SAVE_FPR_+(14-fpr1)*8]
+|.if ARM64EC and (gpr1 == 23)
+|.elif ARM64EC and (gpr1 == 27)
+|  str x..gpr1, [sp, # SAVE_GPR_+(27-gpr1)*8]
+|.else
 |  stp_unwind x..gpr1, x..gpr2, [sp, # SAVE_GPR_+(27-gpr1)*8]
+|.endif
 |.endmacro
 |.macro rest_, gpr1, gpr2, fpr1, fpr2
 |  ldp_unwind d..fpr1, d..fpr2, [sp, # SAVE_FPR_+(14-fpr1)*8]
+|.if ARM64EC and (gpr1 == 23)
+|.elif ARM64EC and (gpr1 == 27)
+|  ldr x..gpr1, [sp, # SAVE_GPR_+(27-gpr1)*8]
+|.else
 |  ldp_unwind x..gpr1, x..gpr2, [sp, # SAVE_GPR_+(27-gpr1)*8]
+|.endif
 |.endmacro
 |
 |.macro saveregs
@@ -302,19 +341,40 @@
 |  blo target
 |.endmacro
 |
+|.if ARM64EC
+|.macro init_constants
+|  .long 0x2f00040f // mvni TISNIL, #0
+|  movz TISNUMhi, #(LJ_TISNUM>>1)&0xffff, lsl #16
+|.endmacro
+|.else
 |.macro init_constants
 |  movn TISNIL, #0
 |  movz TISNUM, #(LJ_TISNUM>>1)&0xffff, lsl #48
 |  movz TISNUMhi, #(LJ_TISNUM>>1)&0xffff, lsl #16
 |.endmacro
+|.endif
 |
 |.macro mov_false, reg; movn reg, #0x8000, lsl #32; .endmacro
 |.macro mov_true, reg; movn reg, #0x0001, lsl #48; .endmacro
+|
+|.if ARM64EC
+|.macro mov_nil, reg; movn reg, #0; .endmacro
+|.macro cmp_nil, reg; cmn reg, #1; .endmacro
+|.macro add_TISNUM, dst, src
+|.if "dst" == "src"
+|  movk dst, #(LJ_TISNUM>>1)&0xffff, lsl #48
+|.else
+|  add dst, src, TISNUMhi, lsl #32
+|.endif
+|.endmacro
+|.else
 |.macro mov_nil, reg; mov reg, TISNIL; .endmacro
 |.macro cmp_nil, reg; cmp reg, TISNIL; .endmacro
 |.macro add_TISNUM, dst, src; add dst, src, TISNUM; .endmacro
+|.endif
 |
 #define GL_J(field)	(GG_G2J + (int)offsetof(jit_State, field))
+#define GL_GOT(func)	(GG_OFS(got[LJ_GOT_##func]) - GG_OFS(g))
 |
 #define PC2PROTO(field)  ((int)offsetof(GCproto, field)-(int)sizeof(GCproto))
 |
@@ -443,9 +503,15 @@ static void build_subroutines(BuildCtx *ctx)
   |  // - A return back from a lua_call() with (high) nresults adjustment.
   |  str BASE, L->top			// Save current top held in BASE (yes).
   |  mov CARG1, L
+  |.if ARM64EC
+  |  mov RA, RC
+  |.endif
   |  bl extern lj_state_growstack	// (lua_State *L, int n)
   |  ldr BASE, L->top			// Need the (realloced) L->top in BASE.
   |  ldrsw CARG2, SAVE_NRES
+  |.if ARM64EC
+  |  mov RC, RA
+  |.endif
   |  b <2
   |
   |->vm_unwind_c:			// Unwind C stack, return from vm_pcall.
@@ -906,7 +972,11 @@ static void build_subroutines(BuildCtx *ctx)
   |->vmeta_len:
   |  add CARG2, BASE, RC, lsl #3
 #if LJ_52
+  |.if ARM64EC
+  |  str TAB:CARG1, TMPD
+  |.else
   |  mov TAB:RC, TAB:CARG1		// Save table (ignored for other types).
+  |.endif
 #endif
   |   str BASE, L->base
   |  mov CARG1, L
@@ -915,7 +985,11 @@ static void build_subroutines(BuildCtx *ctx)
   |  // Returns NULL (retry) or TValue * (metamethod base).
 #if LJ_52
   |  cbnz CRET1, ->vmeta_binop		// Binop call for compatibility.
+  |.if ARM64EC
+  |  ldr TAB:CARG1, TMPD
+  |.else
   |  mov TAB:CARG1, TAB:RC
+  |.endif
   |  b ->BC_LEN_Z
 #else
   |  b ->vmeta_binop			// Binop call for compatibility.
@@ -949,9 +1023,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  sub CARG2, BASE, #16
   |   str PC, SAVE_PC
   |  add CARG3, BASE, NARGS8:RC
+  |.if ARM64EC
+  |  mov NARGS8:RA, NARGS8:RC
+  |.endif
   |  bl extern lj_meta_call	// (lua_State *L, TValue *func, TValue *top)
   |  ldr LFUNC:CARG3, [BASE, FRAME_FUNC]  // Guaranteed to be a function here.
+  |.if ARM64EC
+  |   add NARGS8:RC, NARGS8:RA, #8	// Got one more argument now.
+  |.else
   |   add NARGS8:RC, NARGS8:RC, #8	// Got one more argument now.
+  |.endif
   |  and LFUNC:CARG3, CARG3, #LJ_GCVMASK
   |  ins_call
   |
@@ -962,10 +1043,18 @@ static void build_subroutines(BuildCtx *ctx)
   |  sub CARG2, RA, #16
   |   str PC, SAVE_PC
   |  add CARG3, RA, NARGS8:RC
+  |.if ARM64EC
+  |  mov NARGS8:PC, NARGS8:RC
+  |.endif
   |  bl extern lj_meta_call	// (lua_State *L, TValue *func, TValue *top)
   |  ldr TMP1, [RA, FRAME_FUNC]		// Guaranteed to be a function here.
+  |.if ARM64EC
+  |   add NARGS8:RC, NARGS8:PC, #8	// Got one more argument now.
+  |   ldr PC, [BASE, FRAME_PC]
+  |.else
   |   ldr PC, [BASE, FRAME_PC]
   |   add NARGS8:RC, NARGS8:RC, #8	// Got one more argument now.
+  |.endif
   |  and LFUNC:CARG3, TMP1, #LJ_GCVMASK
   |  b ->BC_CALLT2_Z
   |
@@ -1231,6 +1320,9 @@ static void build_subroutines(BuildCtx *ctx)
   |  cbz TMP0w, ->fff_res
   |  bl extern lj_tab_getinth		// (GCtab *t, int32_t key)
   |  // Returns cTValue * or NULL.
+  |.if ARM64EC
+  |  mov RC, #(0+1)*8
+  |.endif
   |  cbz CRET1, ->fff_res
   |  ldr TMP0, [CRET1]
   |  b <1
@@ -1247,7 +1339,15 @@ static void build_subroutines(BuildCtx *ctx)
 #endif
   |  mov RC, #(3+1)*8
   |  stp CFUNC:CARG4, CARG1, [BASE, #-16]
+  |.if ARM64EC
+  |.if ENDIAN_LE
+  |   stp wzr, TISNUMhiw, [BASE]
+  |.else
+  |   stp TISNUMhiw, wzr, [BASE]
+  |.endif
+  |.else
   |   str TISNUM, [BASE]
+  |.endif
   |  b ->fff_res
   |
   |//-- Base library: catch errors ----------------------------------------
@@ -2025,16 +2125,27 @@ static void build_subroutines(BuildCtx *ctx)
   |//-- Trace exit handler -------------------------------------------------
   |//-----------------------------------------------------------------------
   |
+  |.if ARM64EC
+  |.define EXIT_NFPR, 16
+  |.else
+  |.define EXIT_NFPR, 32
+  |.endif
   |.macro savex_, a, b
+  |.if a < EXIT_NFPR
   |  stp d..a, d..b, [sp, #a*8]
-  |  stp x..a, x..b, [sp, #32*8+a*8]
+  |.endif
+  |.if a ~= 30
+  |  stp x..a, x..b, [sp, #(EXIT_NFPR+a)*8]
+  |.else
+  |  stp xzr, CARG3, [sp, #(EXIT_NFPR+a)*8]	// Store 0/sp in RID_LR/RID_SP.
+  |.endif
   |.endmacro
   |
   |->vm_exit_handler:
   |.if JIT
   |  bti_call
-  |  sub     sp, sp, #(64*8)
-  |  savex_, 0, 1
+  |  stp d0, d1, [sp, #-(EXIT_NFPR+32)*8]!
+  |  stp x0, x1, [sp, # EXIT_NFPR*8]
   |  savex_, 2, 3
   |  savex_, 4, 5
   |  savex_, 6, 7
@@ -2049,11 +2160,10 @@ static void build_subroutines(BuildCtx *ctx)
   |  savex_, 24, 25
   |  savex_, 26, 27
   |  savex_, 28, 29
-  |  stp d30, d31, [sp, #30*8]
-  |  ldr CARG1, [sp, #64*8]	// Load original value of lr.
-  |   add CARG3, sp, #64*8	// Recompute original value of sp.
+  |  add CARG3, sp, #(EXIT_NFPR+32)*8	// Recompute original value of sp.
+  |  savex_, 30, 31
+  |  ldr CARG1, [sp, #(EXIT_NFPR+32)*8]	// Load original value of lr.
   |    mv_vmstate CARG4w, EXIT
-  |   stp xzr, CARG3, [sp, #62*8]	// Store 0/sp in RID_LR/RID_SP.
   |  sub CARG1, CARG1, lr
   |   ldr L, GL->cur_L
   |  lsr CARG1, CARG1, #2
@@ -2276,6 +2386,25 @@ static void build_subroutines(BuildCtx *ctx)
   |  ret
   |.endif
   |
+  |.if ARM64EC
+  |// int lj_vm_arm64ec_is_x64(global_State *g, ASMFunction* f)
+  |// Mutates f, returns true if resultant function is x64.
+  |->vm_arm64ec_is_x64:
+  |  sp_auth
+  |  stp fp, lr, [sp, #-16]!
+  |  mov fp, sp
+  |  ldr CARG1, [GL:CARG1, #GL_GOT(__os_arm64x_check_icall)]
+  |  ldr x11, [CARG2]			// Pointer to be checked
+  |  movz w10, #0			// Exit stub
+  |  blr_auth CARG1			// x0-x8 saved, x9 out, x10 in, x11 in/out
+  |  cmp x11, #0			// Result is exit stub?
+  |  csel x11, x11, x9, ne		// ARM64 or x64 pointer
+  |  str x11, [CARG2]
+  |  cset CRET1w, eq
+  |  ldp fp, lr, [sp], #16
+  |  ret_auth
+  |.endif
+  |
   |//-----------------------------------------------------------------------
   |//-- FFI helper functions -----------------------------------------------
   |//-----------------------------------------------------------------------
@@ -2284,6 +2413,12 @@ static void build_subroutines(BuildCtx *ctx)
   |// Saveregs already performed. Callback slot number in w9, g in x10.
   |->vm_ffi_callback:
   |.if FFI
+  |.if ARM64EC
+  |  tst x9, #~0xffffULL		// Executing as entry thunk?
+  |  bne ->vm_ffi_callback_x64
+  |->vm_ffi_callback_arm64:
+  |.endif
+  |// Callback slot number in w9, g in x10.
   |.type CTSTATE, CTState, PC
   |  saveregs
   |  ldr CTSTATE, GL:x10->ctype_state
@@ -2327,6 +2462,79 @@ static void build_subroutines(BuildCtx *ctx)
   |  b ->vm_leave_unw
   |.endif
   |
+  |
+  |.if FFI and JIT and ARM64EC
+  |->vm_arm64ec_jit_exit_thunk:		// Exit thunk for JIT calling X64.
+  |  // ARM64 arguments in x0-x7 and d0-d7, X64 func in x9, thunk kind in x15.
+  |  sp_auth
+  |  ldr x16, [GL, #GL_GOT(__os_arm64x_dispatch_call_no_redirect)]
+  |  ubfiz w12, w15, #1, #4		// Low 4 kind bits: stack adjustment.
+  |   add x17, sp, #0			// Interpreter frame reserved X64 home
+  |   stp x17, lr, [fp, #16-SAVE_FP_LR_]// space for FUNCCW. Use it for sp+lr.
+  |    tst w15, #0x10			// Next kind bit is multi-purpose flag.
+  |  sub sp, sp, w12, uxtw #3
+  |  tbnz w15, #3, >4			// Complex argument shuffle required?
+  |  tbnz w15, #2, >2			// Flushing of x4-x7 or d4-d7 required?
+  |    beq >1				// Skip mirroring of GPRs to FPRs?
+  |  fmov d0, x0
+  |   fmov d1, x1
+  |  fmov d2, x2
+  |   fmov d3, x3
+  |1:
+  |  blr_auth x16			// Call via x16 is hint to emulator.
+  |   ldp x17, lr, [fp, #16-SAVE_FP_LR_]
+  |   add sp, x17, #0
+  |  mov CRET1, x8			// x8 is X64 rax.
+  |  ret_auth
+  |2:					// Flushing of x4-x7 or d4-d7 required.
+  |    bne >3				// Flushing of d4-d7 required?
+  |  stp x4, x5, [sp, #32]		// Flush x4-x7 to stack, to handle the
+  |   stp x6, x7, [sp, #48]		// case of all arguments integer.
+  |  b <1
+  |3:
+  |  stp d4, d5, [sp, #32]		// Flush d4-d7 to stack, to handle the
+  |   stp d6, d7, [sp, #48]		// case of all arguments FP.
+  |  b <1
+  |4:					// Complex argument shuffle required.
+  |  stp x1, x2, [sp, #0]		// Spill x1-7 and d1-d7 to temporary
+  |   str d1, [sp, #56+0]		// workspace; GPRs at sp+#0 through
+  |  stp x3, x4, [sp, #16]		// sp+#56, FPRs at sp+#56 through
+  |   stp d2, d3, [sp, #56+8]		// sp+#112. Note x0/d0 not spilled.
+  |  movz w1, #0			// w1 = Index of next GPR input.
+  |   movz w2, #7			// w2 = Index of next FPR input.
+  |  add x3, sp, #112			// x3 = Output argument pointer.
+  |   lsr x15, x15, #5			// Low 5 kind bits now consumed.
+  |  stp x5, x6, [sp, #32]
+  |   stp d4, d5, [sp, #56+24]
+  |  str x7, [sp, #48]
+  |   stp d6, d7, [sp, #56+40]
+  |    bne >6				// Is 1st argument FPR?
+  |5: 					// Consume next GPR.
+  |  str x0, [x3], #8
+  |   cmp w1, #6
+  |  ldr x0, [sp, w1, uxtw #3]
+  |   csinc w1, w12, w1, eq		// Advance index or switch to stack.
+  |  tst x15, #1
+  |   lsr x15, x15, #1
+  |  beq <5				// Next argument also GPR?
+  |   cbz x15, >7			// No more arguments?
+  |6: 					// Consume next FPR.
+  |  str d0, [x3], #8
+  |   cmp w2, #13
+  |  ldr d0, [sp, w2, uxtw #3]
+  |   csinc w2, w12, w2, eq		// Advance index or switch to stack.
+  |  tst x15, #1
+  |   lsr x15, x15, #1
+  |  beq <6				// Next argument also FPR?
+  |   cbnz x15, <5			// Any more arguments?
+  |7: 					// Done consuming arguments.
+  |  ldp x0, x1, [sp, #112]!		// Remove the spill space, then copy
+  |  ldp d0, d1, [sp]			// out of home space to GPRs+FPRs.
+  |   ldp x2, x3, [sp, #16]
+  |    ldp d2, d3, [sp, #16]
+  |  b <1
+  |.endif
+  |
   |->vm_ffi_call:			// Call C function via FFI.
   |  // Caveat: needs special frame unwinding, see below.
   |.if FFI
@@ -2349,10 +2557,16 @@ static void build_subroutines(BuildCtx *ctx)
   |  subs TMP1, TMP1, #8
   |  bpl <1
   |2:
+  |.if ARM64EC
+  |  ldrb TMP1w, CCSTATE->x64
+  |.endif
   |  ldp x0, x1, CCSTATE->gpr[0]
   |   ldp d0, d1, CCSTATE->fpr[0]
   |  ldp x2, x3, CCSTATE->gpr[2]
   |   ldp d2, d3, CCSTATE->fpr[2]
+  |.if ARM64EC
+  |  tbnz TMP1w, #0, >1			// X64 call?
+  |.endif
   |  ldp x4, x5, CCSTATE->gpr[4]
   |   ldp d4, d5, CCSTATE->fpr[4]
   |  ldp x6, x7, CCSTATE->gpr[6]
@@ -2363,12 +2577,58 @@ static void build_subroutines(BuildCtx *ctx)
   |  stp x0, x1, CCSTATE->gpr[0]
   |   stp d0, d1, CCSTATE->fpr[0]
   |   stp d2, d3, CCSTATE->fpr[2]
+  |2:
   |  ldp fp, lr, [sp, #16]
   |  ldp_unwind CCSTATE, x20, [sp], #32
   |  ret_auth
+  |.if ARM64EC
+  |1:
+  |  ldr GL:x16, CCSTATE->g
+  |  fmov d0, x0			// Mirror GPRs to FPRs.
+  |  fmov d1, x1			// Varargs _require_ this, and argument
+  |  fmov d2, x2			// marshalling is simplified by always
+  |  fmov d3, x3			// doing it.
+  |  ldr x16, [GL:x16, #GL_GOT(__os_arm64x_dispatch_call_no_redirect)]
+  |  mov x9, TMP3			// X64 function pointer for emulator.
+  |  sub sp, sp, #32			// X64 home space.
+  |  blr_auth x16			// Call via x16 is hint to emulator.
+  |  sub sp, fp, #16
+  |  str x8, CCSTATE->gpr[0]		// x8 is X64 rax.
+  |  str d0, CCSTATE->fpr[0]
+  |  b <2
+  |.endif
   |.endif
   |// Note: vm_ffi_call must be the last function in this object file!
+  |// ... unless ARM64EC, in which case vm_ffi_call must be penultimate
+  |// function and vm_ffi_callback_x64 must be the last function.
   |
+  |.if ARM64EC
+  |->vm_ffi_callback_x64:		// Entry thunk for vm_ffi_callback.
+  |// Caveat: needs special frame unwinding.
+  |.if FFI
+  |// Address of callback stub in x9, g in x10.
+  |  stp q6, q7, [sp, #-160]!		// Save non-volatile XMM registers.
+  |  stp q8, q9, [sp, #32]
+  |  stp q10, q11, [sp, #64]
+  |  stp q12, q13, [sp, #96]
+  |  stp q14, q15, [sp, #128]
+  |  stp fp, lr, [sp, #176]		// Using some X64 home space for fp+lr.
+  |  add fp, sp, #176
+  |  ldr d8, [GL:x10, #GL_GOT(__os_arm64x_dispatch_ret)]
+  |  ldr w9, [x9]			// Load callback stub's MOVZ.
+  |  ubfx w9, w9, #5, #19		// Recover slot number and marker bit.
+  |  bl ->vm_ffi_callback_arm64
+  |  mov x8, CRET1			// x8 is X64 rax.
+  |  fmov x16, d8			// __os_arm64x_dispatch_ret
+  |  ldp fp, lr, [sp, #176]
+  |  ldp q14, q15, [sp, #128]		// Restore non-volatile XMM registers.
+  |  ldp q12, q13, [sp, #96]
+  |  ldp q10, q11, [sp, #64]
+  |  ldp q8, q9, [sp, #32]
+  |  ldp q6, q7, [sp], #160
+  |  br x16				// This consumes lr!
+  |.endif
+  |.endif
   |//-----------------------------------------------------------------------
 }
 
@@ -3156,6 +3416,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |
     |5:
     |  bl extern lj_gc_step_fixtop  // (lua_State *L)
+    |.if ARM64EC
+    |  ldrh RCw, [PC, #-4+OFS_RD]
+    |.endif
     |  mov CARG1, L
     |  b <1
     break;
@@ -3498,6 +3761,9 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |   str PC, SAVE_PC
     |  bl extern lj_tab_reasize		// (lua_State *L, GCtab *t, int nasize)
     |  // Must not reallocate the stack.
+    |.if ARM64EC
+    |  ldrh RCw, [PC, #-4+OFS_RD]
+    |.endif
     |  b <1
     |
     |7:  // Possible table write barrier for any value. Skip valiswhite check.
@@ -4127,7 +4393,20 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov CARG1, L
     |   bhi ->vm_growstack_c		// Need to grow stack.
     |    st_vmstate TMP0w
-    |  blr_auth CARG4			// (lua_State *L [, lua_CFunction f])
+    if (op == BC_FUNCCW) {
+      |.if ARM64EC
+      |  ldr x9, [GL, #GL_GOT(__os_arm64x_check_icall)]
+      |  cmp CARG4, #0
+      |  adr x10, >1			// Exit stub
+      |  csel x11, CARG2, CARG4, eq	// Pointer to be checked
+      |  blr_auth x9
+      |  blr_auth x11			// (lua_State *L [, lua_CFunction f])
+      |.else
+      |  blr_auth CARG4			// (lua_State *L, lua_CFunction f)
+      |.endif
+    } else {
+      |  blr_auth CARG4			// (lua_State *L)
+    }
     |  // Returns nresults.
     |  ldp BASE, TMP1, L->base
     |    str L, GL->cur_L
@@ -4136,6 +4415,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  ldr PC, [BASE, FRAME_PC]
     |   sub RA, TMP1, RC		// RA = L->top - nresults*8
     |  b ->vm_returnc
+    if (op == BC_FUNCCW) {
+      |.if ARM64EC
+      |1:
+      |  sp_auth
+      |  ldr x16, [GL, #GL_GOT(__os_arm64x_dispatch_call_no_redirect)]
+      |  mov RA, lr
+      |  blr_auth x16			// Call via x16 is hint to emulator
+      |  mov lr, RA			// Help return address predictor.
+      |  mov CRET1w, w8			// w8 is x64 eax
+      |  ret_auth
+      |.endif
+    }
     break;
 
   /* ---------------------------------------------------------------------- */

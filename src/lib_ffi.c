@@ -748,6 +748,9 @@ LJLIB_CF(ffi_abi)	LJLIB_REC(.)
 #if LJ_ABI_PAUTH
     "\005pauth"
 #endif
+#if LJ_ABI_ARM64EC
+    "\007arm64ec"
+#endif
 #if LJ_TARGET_UWP
     "\003uwp"
 #endif
