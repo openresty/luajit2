@@ -2614,15 +2614,18 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  sllg RA, RA, 3
     |  sllg RD, RD, 3
     |  lg RB, 0(RD, BASE)
-    |  checkint RB, >3
-    |  lcr RB, RB; jo >2
+    |  checkint RB, >4
+    |  lcr RB, RB; je >2; jo >3
     |1:
     |  stg RB, 0(RA, BASE)
     |  ins_next
     |2:
-    |  llihh RB, 0x41e0 // (double)2^31
+    |  llihh RB, 0x8000 // (double)-0
     |  j <1
     |3:
+    |  llihh RB, 0x41e0 // (double)2^31
+    |  j <1
+    |4:
     |  jh ->vmeta_unm
     |  // Toggle sign bit.
     |  llihh TMPR0, 0x8000
