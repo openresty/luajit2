@@ -1270,6 +1270,59 @@ LUA_API int lua_resume(lua_State *L, int nargs)
 
 /* -- GC and memory management -------------------------------------------- */
 
+#if LJ_TARGET_WINDOWS
+static uint64_t gc_get_ns(void)
+{
+  LARGE_INTEGER pf, pc;
+  uint64_t tv_sec, tv_nsec;
+
+  if (!QueryPerformanceFrequency(&pf) || !QueryPerformanceCounter(&pc))
+    return 0;
+
+  tv_sec = pc.QuadPart / pf.QuadPart;
+  tv_nsec = ((pc.QuadPart % pf.QuadPart) * 1000000000ULL + (pf.QuadPart >> 1)) / pf.QuadPart;
+
+  return 1000000000ULL * tv_sec + tv_nsec;
+}
+#elif LJ_TARGET_POSIX
+#include <time.h>
+
+static uint64_t gc_get_ns(void)
+{
+  struct timespec ts;
+
+#ifdef CLOCK_MONOTONIC_RAW
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+
+  return 1000000000ULL * ts.tv_sec + ts.tv_nsec;
+}
+#endif
+
+static int gc_step_timeout(lua_State *L, uint32_t timeout_usec)
+{
+#if LJ_TARGET_WINDOWS || LJ_TARGET_POSIX
+  int res = 0;
+  uint64_t timeout = timeout_usec * 1000;
+  uint64_t time_current = gc_get_ns();
+
+  timeout += time_current;
+  while (time_current < timeout) {
+    if (lj_gc_step(L) > 0) {
+      res = 1;
+      break;
+    }
+
+    time_current = gc_get_ns();
+  }
+  return res;
+#else
+  return -1;
+#endif
+}
+
 LUA_API int lua_gc(lua_State *L, int what, int data)
 {
   global_State *g = G(L);
@@ -1300,6 +1353,11 @@ LUA_API int lua_gc(lua_State *L, int what, int data)
       }
     break;
   }
+  case LUA_GCTIMEOUT:
+    res = gc_step_timeout(L, (uint32_t)data);
+    if (res >= 0)
+      g->gc.threshold = LJ_MAX_MEM;
+    break;
   case LUA_GCSETPAUSE:
     res = (int)(g->gc.pause);
     g->gc.pause = (MSize)data;
