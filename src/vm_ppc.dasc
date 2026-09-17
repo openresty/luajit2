@@ -1852,7 +1852,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  lwz TMP2, WORD_HI(TMP1)
   |.else
   |  lwzux TMP2, TMP1, TMP3
-  |  lwz TMP3, WORD_HI(TMP1)
+  |  lwz TMP3, 4(TMP1)
   |.endif
   |1:
   |  checknil TMP2
@@ -5903,6 +5903,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  lwz RB, WORD_HI(TMP3)
     |.else
     |  add CARG3, TMP2, TMP3
+    |  lwz RB, WORD_HI(CARG3)
     |  lwz CARG1, 0(CARG3)
     |  lwz CARG2, 4(CARG3)
     |   add NODE:TMP3, TMP2, TMP3
