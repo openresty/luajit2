@@ -390,7 +390,7 @@ static void emit_cnb(ASMState *as, A64Ins ai, Reg r, MCode *target)
 
 #define emit_jmp(as, target)	emit_branch(as, A64I_B, (target))
 
-static void emit_call(ASMState *as, ASMFunction target)
+static void emit_call(ASMState *as, ASMFunction target, RegSet allow)
 {
   MCode *p = --as->mcp;
 #if LJ_ABI_PAUTH
@@ -403,8 +403,7 @@ static void emit_call(ASMState *as, ASMFunction target)
   if (A64F_S_OK(delta>>2, 26)) {
     *p = A64I_BL | A64F_S26(delta>>2);
   } else {  /* Target out of range: need indirect call. But don't use R0-R7. */
-    Reg r = ra_allock(as, i64ptr(target),
-		      RSET_RANGE(RID_X8, RID_MAX_GPR)-RSET_FIXED);
+    Reg r = ra_allock(as, i64ptr(target), allow);
     *p = A64I_BLR_AUTH | A64F_N(r);
   }
 }

@@ -132,23 +132,18 @@ static void *err_unwind(lua_State *L, void *stopcf, int errcode)
       break;
     case FRAME_C:  /* C frame. */
     unwind_c:
-#if LJ_UNWIND_EXT
+if (!LJ_UNWIND_EXT && !stopcf) goto unwind_c_continue_search;
       if (errcode) {
 	L->base = frame_prevd(frame) + 1;
 	L->cframe = cframe_prev(cf);
 	unwindstack(L, frame - LJ_FR2);
       } else if (cf != stopcf) {
+    unwind_c_continue_search:
 	cf = cframe_prev(cf);
 	frame = frame_prevd(frame);
 	break;
       }
       return NULL;  /* Continue unwinding. */
-#else
-      UNUSED(stopcf);
-      cf = cframe_prev(cf);
-      frame = frame_prevd(frame);
-      break;
-#endif
     case FRAME_CP:  /* Protected C frame. */
       if (cframe_canyield(cf)) {  /* Resume? */
 	if (errcode) {
@@ -335,7 +330,7 @@ LJ_FUNCA int lj_err_unwind_win(EXCEPTION_RECORD *rec,
 
 #if LJ_UNWIND_JIT
 
-#if LJ_TARGET_X64
+#if LJ_TARGET_X64 || (LJ_TARGET_ARM64 && LJ_ABI_ARM64EC)
 #define CONTEXT_REG_PC	Rip
 #elif LJ_TARGET_ARM64
 #define CONTEXT_REG_PC	Pc

@@ -102,7 +102,9 @@ static const char *sym_decorate(BuildCtx *ctx,
 {
   char name[256];
   char *p;
-#if LJ_64
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+  const char *symprefix = "#";
+#elif LJ_64
   const char *symprefix = ctx->mode == BUILD_machasm ? "_" : "";
 #elif LJ_TARGET_XBOX360
   const char *symprefix = "";
@@ -124,6 +126,13 @@ static const char *sym_decorate(BuildCtx *ctx,
 #endif
   }
   p = (char *)malloc(strlen(name)+1);  /* MSVC doesn't like strdup. */
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+  if (strstr(name, "#" LABEL_PREFIX "vm_exit_") == name ||
+      strcmp(name, "#" LABEL_PREFIX "vm_asm_begin") == 0) {
+    /* Declared as data rather than code, so no leading #. */
+    strcpy(p, name + 1);
+  } else
+#endif
   strcpy(p, name);
   return p;
 }

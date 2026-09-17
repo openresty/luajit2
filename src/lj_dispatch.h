@@ -58,7 +58,13 @@ extern double __divdf3(double a, double b);
   _(lj_tab_setinth) _(lj_buf_putstr_reverse) _(lj_buf_putstr_lower) \
   _(lj_buf_putstr_upper) _(lj_buf_tostr) \
   JITGOTDEF(_) FFIGOTDEF(_) SFGOTDEF(_)
-
+#endif
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+#define GOTDEF(_) \
+  _(__os_arm64x_check_icall) _(__os_arm64x_dispatch_call_no_redirect) \
+  _(__os_arm64x_dispatch_ret) _(__os_arm64x_x64_jump)
+#endif
+#if LJ_TARGET_MIPS || (LJ_TARGET_ARM64 && LJ_ABI_ARM64EC)
 enum {
 #define GOTENUM(name) LJ_GOT_##name,
 GOTDEF(GOTENUM)
@@ -94,7 +100,7 @@ typedef struct GG_State {
   /* Make g reachable via K12 encoded DISPATCH-relative addressing. */
   uint8_t align1[(16-sizeof(global_State))&15];
 #endif
-#if LJ_TARGET_MIPS
+#if LJ_TARGET_MIPS || (LJ_TARGET_ARM64 && LJ_ABI_ARM64EC)
   ASMFunction got[LJ_GOT__MAX];		/* Global offset table. */
 #endif
 #if LJ_HASJIT
