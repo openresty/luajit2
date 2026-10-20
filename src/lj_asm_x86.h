@@ -344,13 +344,14 @@ static void asm_fusexref(ASMState *as, IRRef ref, RegSet allow)
       as->mrm.base = RID_DISPATCH;
       return;
     }
-  } if (0) {
 #else
     as->mrm.ofs = ir->i;
     as->mrm.base = RID_NONE;
-  } else if (ir->o == IR_STRREF) {
-    asm_fusestrref(as, ir, allow);
+    return;
 #endif
+  }
+  if (ir->o == IR_STRREF) {
+    asm_fusestrref(as, ir, allow);
   } else {
     as->mrm.ofs = 0;
     if (canfuse(as, ir) && ir->o == IR_ADD && ra_noreg(ir->r)) {
@@ -1112,10 +1113,12 @@ static void asm_tvptr(ASMState *as, Reg dest, IRRef ref, MSize mode)
     } else {
 #if LJ_GC64
       if (irref_isk(ref)) {
+	Reg tmp;
 	TValue k;
 	lj_ir_kvalue(as->J->L, &k, ir);
-	emit_movmroi(as, dest, 4, k.u32.hi);
-	emit_movmroi(as, dest, 0, k.u32.lo);
+	tmp = ra_scratch(as, rset_exclude(RSET_GPR, dest));
+	emit_rmro(as, XO_MOVto, tmp|REX_64, dest, 0);
+	emit_loadu64(as, tmp, k.u64);
       } else {
 	/* TODO: 64 bit store + 32 bit load-modify-store is suboptimal. */
 	Reg src = ra_alloc1(as, ref, rset_exclude(RSET_GPR, dest));
@@ -2787,8 +2790,9 @@ static void asm_stack_restore(ASMState *as, SnapShot *snap)
 	  emit_i32(as, -1);
 	  emit_rmro(as, XO_MOVmi, REX_64, RID_BASE, ofs);
 	} else {
-	  emit_movmroi(as, RID_BASE, ofs+4, k.u32.hi);
-	  emit_movmroi(as, RID_BASE, ofs, k.u32.lo);
+	  Reg tmp = ra_scratch(as, rset_exclude(RSET_GPR, RID_BASE));
+	  emit_rmro(as, XO_MOVto, tmp|REX_64, RID_BASE, ofs);
+	  emit_loadu64(as, tmp, k.u64);
 	}
 #else
       } else if (!irt_ispri(ir->t)) {
