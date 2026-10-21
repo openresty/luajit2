@@ -333,8 +333,10 @@
   if (LJ_ABI_ARM64EC && (cc->x64 & 1)) { \
     if (!cc->retref) \
       *(int64_t *)dp = *(int64_t *)sp;  /* Copy complex float from GPRs. */ \
-  } else if (ctr->size == 2*sizeof(float)) { \
-    /* Copy complex float from FPRs. */ \
+  } else if (ctr->size == 2*sizeof(float)) {  /* Copy complex float from FPRs. */ \
+    ((float *)dp)[0] = cc->fpr[0].f; \
+    ((float *)dp)[1] = cc->fpr[1].f; \
+  } else {  /* Copy complex double from FPRs. */ \
     ((double *)dp)[0] = cc->fpr[0].d; \
     ((double *)dp)[1] = cc->fpr[1].d; \
   }
