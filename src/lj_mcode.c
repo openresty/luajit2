@@ -85,7 +85,7 @@ static LJ_NORET LJ_NOINLINE void mcode_protfail(jit_State *J)
 
 static void *mcode_alloc_at(uintptr_t hint, size_t sz, DWORD prot)
 {
-  return LJ_WIN_VALLOC((void *)hint, sz,
+  return LJ_WIN_VALLOC_CODE((void *)hint, sz,
 		       MEM_RESERVE|MEM_COMMIT|MEM_TOP_DOWN, prot);
 }
 
@@ -99,11 +99,31 @@ static void mcode_setprot(jit_State *J, void *p, size_t sz, DWORD prot)
 {
 #if LUAJIT_SECURITY_MCODE != 0
   DWORD oprot;
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+  /* EC_CODE pages reject PAGE_READWRITE — must retain execute bit. */
+  if (prot == PAGE_READWRITE) prot = PAGE_EXECUTE_READWRITE;
+#endif
   if (!LJ_WIN_VPROTECT(p, sz, prot, &oprot)) mcode_protfail(J);
 #else
   UNUSED(J); UNUSED(p); UNUSED(sz); UNUSED(prot);
 #endif
 }
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+#pragma comment(lib, "mincore")
+void *LJ_WIN_VALLOC_CODE(void *hint, size_t sz, unsigned atype, unsigned prot)
+{
+  MEM_EXTENDED_PARAMETER ext[1] = {0};
+  void *p;
+  ext[0].Type = MemExtendedParameterAttributeFlags;
+  ext[0].ULong64 = MEM_EXTENDED_PARAMETER_EC_CODE;
+  /* EC_CODE pages must always retain execute bit.
+  ** PAGE_READWRITE (MCPROT_GEN) is rejected by kernel on EC_CODE pages.
+  ** Map it to PAGE_EXECUTE_READWRITE instead. */
+  if (prot == PAGE_READWRITE) prot = PAGE_EXECUTE_READWRITE;
+  p = LJ_WIN_VALLOC2(NULL, hint, sz, atype, prot, ext, 1);
+  return p;
+}
+#endif
 
 #elif LJ_TARGET_POSIX
 

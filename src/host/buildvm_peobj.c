@@ -96,14 +96,23 @@ typedef struct PEsymaux {
 #define PEOBJ_PDATA_NRELOC	6
 #define PEOBJ_XDATA_SIZE	(8*2+4+6*2)
 #elif LJ_TARGET_ARM64
+#if LJ_ABI_ARM64EC
+#define PEOBJ_ARCH_TARGET	0xa641
+#else
 #define PEOBJ_ARCH_TARGET	0xaa64
+#endif
 #define PEOBJ_RELOC_REL32	0x03  /* MS: BRANCH26. */
 #define PEOBJ_RELOC_DIR32	0x01
 #define PEOBJ_RELOC_ADDR32NB	0x02
 #define PEOBJ_RELOC_OFS		(-4)
 #define PEOBJ_TEXT_FLAGS	0x60500020  /* 60=r+x, 50=align16, 20=code. */
+#if LJ_ABI_ARM64EC
+#define PEOBJ_PDATA_NRELOC	6
+#define PEOBJ_XDATA_SIZE	(4+24+4 +4+8 +4+12)
+#else
 #define PEOBJ_PDATA_NRELOC	4
 #define PEOBJ_XDATA_SIZE	(4+24+4 +4+8)
+#endif
 #endif
 
 /* Section numbers (0-based). */
@@ -187,7 +196,16 @@ void emit_peobj(BuildCtx *ctx)
   int i, nrsym;
   union { uint8_t b; uint32_t u; } host_endian;
 #ifdef PEOBJ_PDATA_NRELOC
-  uint32_t fcofs = (uint32_t)ctx->sym[ctx->nsym-1].ofs;
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+  uint32_t fcsym = ctx->nsym-2;
+#else
+  uint32_t fcsym = ctx->nsym-1;
+#endif
+  uint32_t fcofs = (uint32_t)ctx->sym[fcsym].ofs;
+  if (!strstr(ctx->sym[fcsym].name, "vm_ffi_call")) {
+    fprintf(stderr, "Error: ->vm_ffi_call in wrong place\n");
+    exit(1);
+  }
 #endif
 
   sofs = sizeof(PEheader) + PEOBJ_NSECTIONS*sizeof(PEsection);
@@ -324,27 +342,23 @@ void emit_peobj(BuildCtx *ctx)
 #elif LJ_TARGET_ARM64
   /* https://learn.microsoft.com/en-us/cpp/build/arm64-exception-handling */
   { /* Write .pdata section. */
-    uint32_t pdata[4];
+    uint32_t pdata[PEOBJ_PDATA_NRELOC];
     PEreloc reloc;
     pdata[0] = 0;
     pdata[1] = 0;
     pdata[2] = fcofs;
     pdata[3] = 4+24+4;
+#if LJ_ABI_ARM64EC
+    pdata[4] = ctx->sym[fcsym+1].ofs;
+    pdata[5] = 4+24+4 + 4+8;
+#endif
     owrite(ctx, &pdata, sizeof(pdata));
-    /* Start of .text and start of .xdata. */
-    reloc.vaddr = 0; reloc.symidx = 1+2+nrsym+2+2+1;
-    reloc.type = PEOBJ_RELOC_ADDR32NB;
-    owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
-    reloc.vaddr = 4; reloc.symidx = 1+2+nrsym+2;
-    reloc.type = PEOBJ_RELOC_ADDR32NB;
-    owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
-    /* Start of vm_ffi_call and start of second part of .xdata. */
-    reloc.vaddr = 8; reloc.symidx = 1+2+nrsym+2+2+1;
-    reloc.type = PEOBJ_RELOC_ADDR32NB;
-    owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
-    reloc.vaddr = 12; reloc.symidx = 1+2+nrsym+2;
-    reloc.type = PEOBJ_RELOC_ADDR32NB;
-    owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
+    for (i = 0; i < PEOBJ_PDATA_NRELOC; i++) {
+      /* Alternately against start of .text and start of .xdata. */
+      reloc.vaddr = i*4; reloc.symidx = 1+2+nrsym+2+((i&1)?0:2+1);
+      reloc.type = PEOBJ_RELOC_ADDR32NB;
+      owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
+    }
   }
   { /* Write .xdata section. */
     uint32_t u32;
@@ -359,6 +373,7 @@ void emit_peobj(BuildCtx *ctx)
   int r, o; for (r = r1, o = o1; r <= r2; r += 2, o -= 16) CSAVE_REGP(r, o); \
 } while (0)
 #define CSAVE_REGPX(r,o) CBE16(0xcc00 | (((r) - 19) << 6) | (~(o) >> 3))
+#define CSAVE_REG(r,o)	 CBE16(0xd000 | (((r) - 19) << 6) | ((o) >> 3))
 #define CSAVE_FREGP(r,o) CBE16(0xd800 | (((r) - 8) << 6) | ((o) >> 3))
 #define CSAVE_FREGS(r1,r2,o1) do { \
   int r, o; for (r = r1, o = o1; r <= r2; r += 2, o -= 16) CSAVE_FREGP(r, o); \
@@ -370,15 +385,24 @@ void emit_peobj(BuildCtx *ctx)
   *p++ = CODE_END; \
   while ((p - uwc) & 3) *p++ = CODE_NOP; \
 } while (0)
-
+#define CSAVE_NEXT	(*p++ = 0xe6)
+#define CSAVE_QREGPX(r,o) (*p = 0xe7, \
+  p[1] = 0x60 | (r), p[2] = 0x80 | (~(o) >> 4), p += 3)
+	  
     /* Unwind codes for .text section with handler. */
     p = uwc;
     CADD_FP(192);		/* +2 */
+#if LJ_ABI_ARM64EC
+    CSAVE_REGS(19, 22, 176);	/* +2*2 */
+    CSAVE_REGS(25, 26, 128);	/* +2 */
+    CSAVE_REG(27, 112);		/* +2 */
+#else
     CSAVE_REGS(19, 28, 176);	/* +5*2 */
+#endif
     CSAVE_FREGS(8, 15, 96);	/* +4*2 */
     CSAVE_FPLR(192);		/* +1 */
     CALLOC_S(208);		/* +1 */
-    CEND_ALIGN;			/* +1 +1 -> 24 */
+    CEND_ALIGN;			/* +1 +1 or +1 +3 -> 24 */
 
     u32 = ((24u >> 2) << 27) | (1u << 20) | (fcofs >> 2);
     owrite(ctx, &u32, 4);
@@ -394,10 +418,27 @@ void emit_peobj(BuildCtx *ctx)
     CSAVE_REGPX(19, -32);	/* +2 */
     CEND_ALIGN;			/* +1 +2 -> 8 */
 
-    u32 = ((8u >> 2) << 27) | (((uint32_t)ctx->codesz - fcofs) >> 2);
+    u32 = ((8u >> 2) << 27) | (((uint32_t)ctx->sym[fcsym+1].ofs - fcofs) >> 2);
     owrite(ctx, &u32, 4);
     owrite(ctx, &uwc, 8);
 
+#if LJ_ABI_ARM64EC
+    /* Unwind codes for vm_ffi_callback_x64 without handler. */
+    p = uwc;
+    CSAVE_FPLR(176);		/* +1 */
+    CSAVE_NEXT;			/* +1 */
+    CSAVE_NEXT;			/* +1 */
+    CSAVE_NEXT;			/* +1 */
+    CSAVE_NEXT;			/* +1 */
+    CSAVE_QREGPX(6, -160);	/* +3 */
+    CEND_ALIGN;			/* +1 +3 -> 12 */
+
+    fcofs = (uint32_t)ctx->sym[++fcsym].ofs;
+    u32 = ((12u >> 2) << 27) | (1u << 21) | (((uint32_t)ctx->codesz - fcofs) >> 2);
+    owrite(ctx, &u32, 4);
+    owrite(ctx, &uwc, 12);
+#endif
+	  
     reloc.vaddr = 4 + 24; reloc.symidx = 1+2+nrsym+2+2;
     reloc.type = PEOBJ_RELOC_ADDR32NB;
     owrite(ctx, &reloc, PEOBJ_RELOC_SIZE);
