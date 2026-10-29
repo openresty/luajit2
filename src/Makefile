@@ -52,6 +52,7 @@ CCOPT_arm=
 CCOPT_arm64=
 CCOPT_ppc=
 CCOPT_mips=
+CCOPT_riscv64=
 #
 #CCDEBUG=
 # Uncomment the next line to generate debug information:
@@ -270,7 +271,11 @@ ifneq (,$(findstring LJ_TARGET_MIPS ,$(TARGET_TESTARCH)))
     TARGET_LJARCH= mips
   endif
 else
+ifneq (,$(findstring LJ_TARGET_RISCV64 ,$(TARGET_TESTARCH)))
+    TARGET_LJARCH= riscv64
+else
   $(error Unsupported target architecture)
+endif
 endif
 endif
 endif
@@ -494,6 +499,9 @@ ifeq (ppc,$(TARGET_LJARCH))
   ifneq (,$(findstring LJ_ARCH_PPC_ELFV2 1,$(TARGET_TESTARCH)))
     DASM_AFLAGS+= -D ELFV2
   endif
+endif
+ifneq (,$(findstring LJ_TARGET_RISCV64 ,$(TARGET_TESTARCH)))
+  DASM_AFLAGS+= -D RISCV64
 endif
 endif
 endif
