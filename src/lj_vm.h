@@ -103,6 +103,10 @@ LJ_ASMF int lj_vm_errno(void);
 #endif
 LJ_ASMF TValue *lj_vm_next(GCtab *t, uint32_t idx);
 #endif
+#if LJ_TARGET_ARM64 && LJ_ABI_ARM64EC
+LJ_ASMF int lj_vm_arm64ec_is_x64(global_State *g, ASMFunction* f);
+LJ_ASMF void lj_vm_arm64ec_jit_exit_thunk(void);
+#endif
 
 /* Continuations for metamethods. */
 LJ_ASMF void lj_cont_cat(void);  /* Continue with concatenation. */

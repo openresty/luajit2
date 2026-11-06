@@ -194,9 +194,15 @@ enum { LJ_CONT_TAILCALL, LJ_CONT_FFI_CALLBACK };  /* Special continuations. */
 #elif LJ_TARGET_ARM64
 #define CFRAME_OFS_ERRF		36
 #define CFRAME_OFS_NRES		40
+#if LJ_ABI_ARM64EC
+#define CFRAME_OFS_PREV		120
+#define CFRAME_OFS_L		144
+#define CFRAME_OFS_PC		152
+#else
 #define CFRAME_OFS_PREV		0
 #define CFRAME_OFS_L		16
 #define CFRAME_OFS_PC		8
+#endif
 #define CFRAME_OFS_MULTRES	32
 #define CFRAME_SIZE		208
 #define CFRAME_SHIFT_MULTRES	3
