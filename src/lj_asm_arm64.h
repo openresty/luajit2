@@ -463,20 +463,123 @@ static int asm_fuseorshift(ASMState *as, IRIns *ir)
 
 /* -- Calls --------------------------------------------------------------- */
 
+#if LJ_ABI_ARM64EC
+static uint64_t arm64ec_jit_exit_thunk_kind(ASMState *as, const CCallInfo *ci,
+					    IRRef *args)
+{
+  /* Build bitmap of FP arguments.
+  ** If any arguments go via the stack in ARM64, the first such argument is
+  ** accurately reported in the bitmap, and subsequent stack arguments are
+  ** reported in the same way as the first (this makes things simpler).
+  */
+  uint64_t fpmask = 0;
+  uint32_t n = 0, nargs = CCI_XNARGS(ci), checkpoint;
+  uint32_t ngpr = 0, nfpr = 0, spadj;
+  uint64_t spmode = 2;  /* Becomes 1 if first stack user FP, or 0 if int. */
+  while (n < nargs) {
+    IRRef ref = args[n];
+    IRIns *ir = IR(ref);
+    if (LJ_UNLIKELY(!ref)) {
+      args++;
+      nargs--;
+      continue;
+    }
+    n++;
+    if (irt_isfp(ir->t)) {
+      if (nfpr < REGARG_NUMFPR) {
+	nfpr++;
+	fpmask |= 1ull << n;
+	checkpoint = (nfpr + ngpr) | (n << 16);
+      } else {
+	spmode = (spmode | (spmode >> 1)) & 1;  /* 2 -> 1, 0/1 unchanged. */
+	fpmask |= spmode << n;
+      }
+    } else {
+      if (ngpr < REGARG_NUMGPR) {
+	ngpr++;
+	checkpoint = (nfpr + ngpr) | (n << 16);
+      } else {
+	spmode &= 1;  /* 2 -> 0, 0/1 unchanged. */
+	fpmask |= spmode << n;
+      }
+    }
+  }
+
+  /* Several easy cases exist:
+  ** - Varargs (because ARM64EC vararg is very close to X64 vararg).
+  ** - All arguments integer (because then no re-ordering).
+  ** - All arguments FP (because then no re-ordering).
+  ** These are all encoded as stack adjustment (in units of 16 bytes) in the
+  ** low 4 bits, and next bit indicating something FP related.
+  */
+  if ((ci->flags & CCI_VARARG))
+    /* Home space, plus mirror GPRs to FPRs if FP in first four arguments. */
+    return 2 + ((fpmask & 0x1e) ? 0x10 : 0);
+  if (nargs <= 4 && (!ngpr || !nfpr))
+    return 2;  /* Just add home space. */
+  if (!nfpr)
+    return 4;  /* Home space, plus flush x4-x7 to stack. */
+  if (!ngpr)
+    return 4 + 0x10;  /* Home space, plus flush d4-d7 to stack. */
+
+  /* Otherwise we're in the complex case.
+  ** The low 4 bits encode the stack adjustment (in units of 16 bytes), the
+  ** next bit indicates whether the 1st argument is FP, then one bit per
+  ** subsequent argument indicating whether it is different type to previous
+  ** argument, then one final set bit to indicate termination.
+  ** The stack adjustment includes 14*8 bytes used to spill x1-x7 and d1-d7,
+  ** which is used during shuffling, but removed before the X64 call.
+  */
+  spadj = ngpr + nfpr;  /* All regargs go to the stack (or to home space). */
+  if (!(checkpoint & 1)) {
+    /* Trailing stack copies elided if an even adjustment precedes them. */
+    spadj = checkpoint & 0xffff;
+    n = checkpoint >> 16;
+  }
+  if (spadj < 4) spadj = 4;	/* Need at least X64 home space. */
+  spadj += 14;			/* Temporary space to spill x1-x7 and d1-d7. */
+  fpmask ^= (fpmask >> 1);	/* Differential encoding. */
+  fpmask &= (1ull << n) - 1;	/* Clear high bits in case of elision. */
+  fpmask |= (1ull << n);	/* Termination marker bit. */
+  return ((spadj + 1) >> 1) | (fpmask << 4);
+}
+#endif
+
 /* Generate a call to a C function. */
 static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
 {
   uint32_t n, nargs = CCI_XNARGS(ci);
   int32_t spofs = 0, spalign = LJ_HASFFI && LJ_TARGET_OSX ? 0 : 7;
-  Reg gpr, fpr = REGARG_FIRSTFPR;
-  if (ci->func)
-    emit_call(as, ci->func);
+  Reg gpr, fpr = REGARG_FIRSTFPR, lastgpr = REGARG_LASTGPR;
+#if LJ_HASFFI && LJ_ABI_WIN && LJ_ABI_ARM64EC
+  MCode *patchnsp = NULL;
+#endif
+  ASMFunction func;
+  if ((func = ci->func)) {
+    RegSet allow = RSET_RANGE(RID_X8, RID_MAX_GPR)-RSET_FIXED;
+#if LJ_ABI_ARM64EC
+    if (lj_vm_arm64ec_is_x64(J2G(as->J), &func)) {
+      ra_allockreg(as, arm64ec_jit_exit_thunk_kind(as, ci, args), RID_X15);
+      ra_allockreg(as, (uintptr_t)func, RID_X9);
+      allow -= RID2RSET(RID_X9) | RID2RSET(RID_X15);
+      func = lj_vm_arm64ec_jit_exit_thunk;
+    }
+#endif
+    emit_call(as, func, allow);
+  }
   for (gpr = REGARG_FIRSTGPR; gpr <= REGARG_LASTGPR; gpr++)
     as->cost[gpr] = REGCOST(~0u, ASMREF_L);
   gpr = REGARG_FIRSTGPR;
 #if LJ_HASFFI && LJ_ABI_WIN
   if ((ci->flags & CCI_VARARG)) {
     fpr = REGARG_LASTFPR+1;
+#if LJ_ABI_ARM64EC
+    lastgpr = RID_X3;
+    if (func != lj_vm_arm64ec_jit_exit_thunk) {
+      patchnsp = --as->mcp;
+      emit_dn(as, A64I_ADDx ^ A64I_K12, RID_X4, RID_SP);
+    }
+#endif
   }
 #endif
   for (n = 0; n < nargs; n++) { /* Setup args. */
@@ -490,7 +593,7 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
 	  ra_leftov(as, fpr, ref);
 	  fpr++;
 #if LJ_HASFFI && LJ_ABI_WIN
-	} else if ((ci->flags & CCI_VARARG) && (gpr <= REGARG_LASTGPR)) {
+	} else if ((ci->flags & CCI_VARARG) && (gpr <= lastgpr)) {
 	  Reg rf = ra_alloc1(as, ref, RSET_FPR);
 	  emit_dn(as, A64I_FMOV_R_D, gpr++, rf & 31);
 #endif
@@ -506,7 +609,7 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
 	  spofs += al + 1;
 	}
       } else {
-	if (gpr <= REGARG_LASTGPR) {
+	if (gpr <= lastgpr) {
 	  lj_assertA(rset_test(as->freeset, gpr),
 		     "reg %d not free", gpr);  /* Must have been evicted. */
 	  ra_leftov(as, gpr, ref);
@@ -536,6 +639,10 @@ static void asm_gencall(ASMState *as, const CCallInfo *ci, IRRef *args)
 #endif
     }
   }
+#if LJ_HASFFI && LJ_ABI_WIN && LJ_ABI_ARM64EC
+  if (patchnsp)
+    *patchnsp = A64I_MOVZx | A64F_U16(spofs) | A64F_D(RID_X5);
+#endif
 }
 
 /* Setup result reg/sp for call. Evict scratch regs. */
@@ -581,8 +688,21 @@ static void asm_callx(ASMState *as, IRIns *ir)
   if (irref_isk(func)) {  /* Call to constant address. */
     ci.func = (ASMFunction)(ir_k64(irf)->u64);
   } else {  /* Need a non-argument register for indirect calls. */
+#if LJ_ABI_ARM64EC
+    lj_assertA(rset_test(as->freeset, RID_X15), "x15 not free");
+    lj_assertA((as->freeset | RSET_RANGE(RID_X9,RID_X11+1)) == as->freeset,
+	       "x9/x10/x11 not free");  /* Must have been evicted. */
+    ra_leftov(as, RID_X11, func);
+    ra_allockreg(as, (uintptr_t)lj_vm_arm64ec_jit_exit_thunk, RID_X10);
+    ra_allockreg(as, arm64ec_jit_exit_thunk_kind(as, &ci, args), RID_X15);
+    emit_n(as, A64I_BLR_AUTH, RID_X11);
+    emit_n(as, A64I_BLR_AUTH, RID_X9);
+    emit_lsptr(as, A64I_LDRx, RID_X9,
+	       (void *)&J2GG(as->J)->got[LJ_GOT___os_arm64x_check_icall]);
+#else
     Reg freg = ra_alloc1(as, func, RSET_RANGE(RID_X8, RID_MAX_GPR)-RSET_FIXED);
     emit_n(as, A64I_BLR_AUTH, freg);
+#endif
     ci.func = (ASMFunction)(void *)0;
   }
   asm_gencall(as, &ci, args);
@@ -2037,13 +2157,18 @@ static Reg asm_setup_call_slots(ASMState *as, IRIns *ir, const CCallInfo *ci)
 #if LJ_HASFFI
   uint32_t i, nargs = CCI_XNARGS(ci);
   if (nargs > (REGARG_NUMGPR < REGARG_NUMFPR ? REGARG_NUMGPR : REGARG_NUMFPR) ||
-      (LJ_TARGET_OSX && (ci->flags & CCI_VARARG))) {
+      ((LJ_TARGET_OSX || LJ_ABI_ARM64EC) && (ci->flags & CCI_VARARG))) {
     IRRef args[CCI_NARGS_MAX*2];
     int ngpr = REGARG_NUMGPR, nfpr = REGARG_NUMFPR;
     int spofs = 0, spalign = LJ_TARGET_OSX ? 0 : 7, nslots;
     asm_collectargs(as, ir, ci, args);
 #if LJ_ABI_WIN
-    if ((ci->flags & CCI_VARARG)) nfpr = 0;
+    if ((ci->flags & CCI_VARARG)) {
+      nfpr = 0;
+#if LJ_ABI_ARM64EC
+      ngpr = 4;
+#endif
+    }
 #endif
     for (i = 0; i < nargs; i++) {
       int al = spalign;

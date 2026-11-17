@@ -6,6 +6,7 @@
 @rem options (in order), if needed. The default is a dynamic release build.
 @rem
 @rem   nogc64        disable LJ_GC64 mode for x64
+@rem   arm64ec  enable ARM64EC ABI for ARM64
 @rem   lua52compat   enable extra Lua 5.2 extensions
 @rem   debug         emit debug symbols
 @rem   amalg         amalgamated build
@@ -58,6 +59,13 @@ if exist minilua.exe.manifest^
 @set DASC=vm_arm64.dasc
 @set DASMTARGET=-D LUAJIT_TARGET=LUAJIT_ARCH_ARM64
 @set LJARCH=arm64
+@if "%1" neq "arm64ec" goto :DA
+@shift
+@set DASMFLAGS=%DASMFLAGS% -D ARM64EC
+@set DASMTARGET=%DASMTARGET% -D LJ_ABI_ARM64EC=1
+@set LJCOMPILE=%LJCOMPILE% /arm64EC
+@set LJLINK=%LJLINK% /machine:arm64ec
+@set LJLIB=%LJLIB% /machine:arm64ec
 @goto :DA
 :X64
 @if "%1" neq "nogc64" goto :DA
